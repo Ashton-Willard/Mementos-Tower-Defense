@@ -17,5 +17,7 @@ export default class UIScene extends Phaser.Scene {
             .on('pointerdown', () => {
                 this.scene.get('MainScene').currentTowerType = 'cannon';
             });
+
+        
     }
 }

@@ -1,6 +1,6 @@
 export default class Turret extends Phaser.GameObjects.Image {
     constructor(scene) {
-        super(scene, 0, 0, 'sprites', 'turret');
+        super(scene, 0, 0, 'turret');
         scene.add.existing(this);
 
         this.level = 1;
@@ -18,8 +18,8 @@ export default class Turret extends Phaser.GameObjects.Image {
     }
 
     place(i, j) {
-        this.x = j * 64 + 32;
-        this.y = i * 64 + 32;
+        this.x = j * 32 + 16;
+        this.y = i * 32 + 16;
     }
 
     update(time, delta) {

@@ -38,11 +38,11 @@ export default class WaveManager {
         const wave = this.waves[this.currentWave];
         let enemy;
         if(wave.type == 'fast'){
-            enemy = this.enemies.get(FastEnemy);
+            enemy = new FastEnemy(this.scene);
         }else {
-            enemy = this.enemies.get();
+            enemy = new Enemy(this.scene);
         }
-        if(!enemy) return;
+        this.enemies.add(enemy);
 
         enemy.setActive(true);
         enemy.setVisible(true);

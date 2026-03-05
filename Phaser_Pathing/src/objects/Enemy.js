@@ -1,14 +1,21 @@
 import HealthBar from "./HealthBar.js";
+
 export default class Enemy extends Phaser.GameObjects.Image {
     constructor(scene) {
-        super(scene, 0, 0, 'sprites', 'enemy');
+
+        // Use the placeholder texture you loaded in preload()
+        super(scene, 0, 0, 'enemy');   // <-- CHANGE IS HERE
+
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
         this.maxHp = 100;
         this.hp = 100;
+
+        // Path follower
         this.follower = { t: 0, vec: new Phaser.Math.Vector2() };
-        
+
+        // Health bar
         this.healthbar = new HealthBar(scene, this);
     }
 
@@ -19,7 +26,7 @@ export default class Enemy extends Phaser.GameObjects.Image {
         this.body.enable = true;
     }
 
-        update(time, delta, path) {
+    update(time, delta, path) {
         this.follower.t += 0.0001 * delta;
 
         path.getPoint(this.follower.t, this.follower.vec);
@@ -37,6 +44,7 @@ export default class Enemy extends Phaser.GameObjects.Image {
 
     receiveDamage(amount) {
         this.hp -= amount;
+
         if (this.hp <= 0) {
             this.setActive(false);
             this.setVisible(false);
