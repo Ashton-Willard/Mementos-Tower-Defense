@@ -10,220 +10,178 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        // Towers atlas
-        this.load.atlas('towers', 'src/assets/spritesheet.png', 'src/assets/spritesheet.json');
-
-        // Enemy placeholder
-        this.load.image('shadow', 'src/assets/Shadow.png');
+        this.load.image('bullet', 'src/assets/bullet.png');
+        this.load.tilemapTiledJSON('map1', 'src/assets/maps/map1.tmj');
+        this.load.image('tiles', 'src/assets/tiles.png');
+        this.load.image('enemy', 'src/assets/enemy.png');
+        this.load.image('turret', 'src/assets/turret.png');
     }
 
     create() {
 
-    // =========================
-    // Sidebar
-    // =========================
+        // ============================================================
+        // START WAVE BUTTON
+        // ============================================================
+        this.startButton = this.add.text(20, 20, "Start Wave", {
+            fontSize: "24px",
+            color: "#ffffff",
+            backgroundColor: "#000000",
+            padding: { x: 10, y: 5 }
+        })
+        .setInteractive()
+        .on('pointerdown', () => {
+            this.startNextRound();
+        });
 
-    this.sidebarWidth = 150;
+        this.startButton.setDepth(9999);
+        this.startButton.setScrollFactor(0);
+        this.startButton.setVisible(true);
 
-    this.add.rectangle(
-        this.scale.width - this.sidebarWidth / 2,
-        this.scale.height / 2,
-        this.sidebarWidth,
-        this.scale.height,
-        0x222222,
-        0.8
-    );
+        // ============================================================
+        // MAP + TILESET
+        // ============================================================
+        this.map = this.make.tilemap({ key: 'map1' });
+        const tileset = this.map.addTilesetImage('Testing_Tileset', 'tiles');
 
-    const cols = 2;
-    const spacing = 70;
-    const startX = this.scale.width - this.sidebarWidth + 40;
-    const startY = 100;
+        this.map.createLayer('Tile Layer 1', tileset);
+        this.map.createLayer('Pathing', tileset);
 
-    this.sidebarTowers = [];
+        // ============================================================
+        // BLOCKED TILES (path + buffer)
+        // ============================================================
+        const pathTiles = [
+            [3,19],[3,3],[5,2],[25,2],[26,4],[26,11],
+            [17,11],[14,7],[10,7],[8,9],[8,15],[10,16],[29,16]
+        ];
 
-    // 🔥 Automatically get all atlas frames
-    const frameNames = this.textures.get('towers').getFrameNames();
+        this.blockedTiles = new Set();
 
-    frameNames.forEach((type, index) => {
-
-        // OPTIONAL: skip bullet frame so it doesn’t show in sidebar
-        if (type === 'bullet') return;
-
-        const col = index % cols;
-        const row = Math.floor(index / cols);
-
-        const x = startX + col * spacing;
-        const y = startY + row * spacing;
-
-        const towerButton = this.add.sprite(x, y, 'towers', type)
-            .setInteractive({ draggable: true });
-
-        towerButton.towerType = type;
-
-        this.sidebarTowers.push(towerButton);
-    });
-
-    // =========================
-    // Drag Logic
-    // =========================
-
-    this.input.on('dragstart', (pointer, gameObject) => {
-
-        // Create preview clone (don’t move original button)
-        gameObject.preview = this.add.sprite(
-            pointer.x,
-            pointer.y,
-            'towers',
-            gameObject.towerType
-        );
-
-        gameObject.preview.setAlpha(0.8);
-    });
-
-    this.input.on('drag', (pointer, gameObject) => {
-        if (gameObject.preview) {
-            gameObject.preview.x = pointer.x;
-            gameObject.preview.y = pointer.y;
+        for (const [x, y] of pathTiles) {
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    this.blockedTiles.add(`${x + dx},${y + dy}`);
+                }
+            }
         }
-    });
 
-    this.input.on('dragend', (pointer, gameObject) => {
+        // ============================================================
+        // HARDCODED PATH
+        // ============================================================
+        this.path = this.add.path();
 
-        if (!gameObject.preview) return;
+        this.path.moveTo(112, 624);
+        this.path.lineTo(112, 112);
+        this.path.lineTo(176, 80);
+        this.path.lineTo(816, 80);
+        this.path.lineTo(848, 144);
+        this.path.lineTo(848, 368);
+        this.path.lineTo(560, 368);
+        this.path.lineTo(464, 240);
+        this.path.lineTo(336, 240);
+        this.path.lineTo(272, 304);
+        this.path.lineTo(272, 496);
+        this.path.lineTo(336, 528);
+        this.path.lineTo(944, 528);
 
-        const cellSize = 64;
+        const debug = this.add.graphics();
+        debug.lineStyle(4, 0xff0000, 1);
+        this.path.draw(debug);
 
-        const gridX = Math.floor(gameObject.preview.x / cellSize) * cellSize + cellSize / 2;
-        const gridY = Math.floor(gameObject.preview.y / cellSize) * cellSize + cellSize / 2;
+        // ============================================================
+        // GROUPS
+        // ============================================================
+        this.enemies = this.physics.add.group({ classType: Enemy });
+        this.bullets = this.physics.add.group({ classType: Bullet });
+        this.turrets = this.add.group({ classType: Turret });
 
-       this.input.on('dragend', (pointer, gameObject) => {
+        this.currentTowerType = 'basic';
 
-    if (!gameObject.preview) return;
+        this.input.on('pointerdown', this.placeTurret, this);
 
-    const cellSize = 64;
+        // ============================================================
+        // WAVE MANAGER
+        // ============================================================
+        this.waveManager = new WaveManager(this, this.enemies, this.path);
 
-    const gridX = Math.floor(gameObject.preview.x / cellSize) * cellSize + cellSize / 2;
-    const gridY = Math.floor(gameObject.preview.y / cellSize) * cellSize + cellSize / 2;
-
-    // Prevent placing inside sidebar
-    if (gridX < this.scale.width - this.sidebarWidth) {
-
-        // 🔹 Create turret dynamically
-        const tower = new Turret(this, gameObject.towerType);
-
-        // Place on grid
-        tower.place(gridY / cellSize, gridX / cellSize);
-
-        // Add to turrets group
-        this.turrets.add(tower);
+        // ============================================================
+        // COLLISIONS
+        // ============================================================
+        this.physics.add.overlap(this.enemies, this.bullets, this.damageEnemy, null, this);
     }
 
-    // Remove preview
-    gameObject.preview.destroy();
-    gameObject.preview = null;
-});
+    // ============================================================
+    // START NEXT ROUND
+    // ============================================================
+    startNextRound() {
+        this.startButton.setVisible(false);   // hide button during wave
+        this.waveManager.startWave();         // start wave properly
+    }
 
-        gameObject.preview.destroy();
-        gameObject.preview = null;
-    });
-
-    // =========================
-    // Groups
-    // =========================
-
-    this.enemies = this.physics.add.group({ classType: Enemy });
-    this.bullets = this.physics.add.group({ classType: Bullet, runChildUpdate: true });
-    this.turrets = this.add.group({ runChildUpdate: true });
-
-    // =========================
-    // Map + Grid
-    // =========================
-
-    this.map = [
-        [0,-1,0,0,0,0,0,0,0,0,0],
-        [0,-1,0,0,0,0,0,0,0,0,0],
-        [0,-1,-1,-1,-1,-1,-1,-1,0,0,0],
-        [0,0,0,0,0,0,0,-1,0,0,0],
-        [0,0,0,0,0,0,0,-1,0,0,0],
-        [0,0,0,0,0,0,0,-1,0,0,0],
-        [0,0,0,0,0,0,0,-1,0,0,0],
-        [0,0,0,0,0,0,0,-1,0,0,0]
-    ];
-
-    const graphics = this.add.graphics();
-    this.drawGrid(graphics);
-
-    // =========================
-    // Path
-    // =========================
-
-    this.path = this.add.path(96, -32);
-    this.path.lineTo(96, 164);
-    this.path.lineTo(480, 164);
-    this.path.lineTo(480, 544);
-
-    const pathGraphics = this.add.graphics();
-    pathGraphics.lineStyle(3, 0xffffff, 1);
-    this.path.draw(pathGraphics);
-
-    // =========================
-    // Wave Manager
-    // =========================
-
-    this.waveManager = new WaveManager(this, this.enemies, this.path);
-    this.waveManager.startWave();
-
-    this.physics.add.overlap(this.enemies, this.bullets, this.damageEnemy, null, this);
-}
+    // ============================================================
+    // UPDATE LOOP
+    // ============================================================
     update(time, delta) {
+        if (!this.waveManager) return;
+
         this.waveManager.update(time, delta);
 
         this.enemies.getChildren().forEach(enemy => {
             if (enemy.active) enemy.update(time, delta, this.path);
         });
+
+        this.bullets.getChildren().forEach(bullet => {
+            if (bullet.active) bullet.update(time, delta);
+        });
+
+        this.turrets.getChildren().forEach(turret => {
+            if (turret.active) turret.update(time, delta);
+        });
     }
 
-    drawGrid(graphics) {
-        const cellSize = 64;
-        const width = this.scale.width;
-        const height = this.scale.height;
-
-        graphics.lineStyle(1, 0xff0000, 0.8);
-
-        for (let y = 0; y <= height; y += cellSize) {
-            graphics.moveTo(0, y);
-            graphics.lineTo(width, y);
-        }
-
-        for (let x = 0; x <= width; x += cellSize) {
-            graphics.moveTo(x, 0);
-            graphics.lineTo(x, height);
-        }
-
-        graphics.strokePath();
+    // ============================================================
+    // TURRET PLACEMENT
+    // ============================================================
+    canPlaceTurret(i, j) {
+        return !this.blockedTiles.has(`${j},${i}`);
     }
 
-    getEnemyInRange(x, y, range){
-        const enemies = this.enemies.getChildren();
-        for(let e of enemies){
-            if(e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= range){
-                return e;
-            }
+    placeTurret(pointer) {
+        const i = Math.floor(pointer.y / 32);
+        const j = Math.floor(pointer.x / 32);
+
+        console.log("Clicked tile:", j, i, "Blocked:", this.blockedTiles.has(`${j},${i}`));
+
+        if (!this.canPlaceTurret(i, j)) return;
+
+        const turret = this.currentTowerType === 'basic'
+            ? this.turrets.get(Turret)
+            : this.turrets.get(CannonTurret);
+
+        if (turret) {
+            turret.setActive(true);
+            turret.setVisible(true);
+            turret.place(i, j);
         }
-        return null;
     }
 
-    spawnBullet(x, y, angle){
+    // ============================================================
+    // BULLET + DAMAGE
+    // ============================================================
+    getEnemyInRange(x, y, range) {
+        return this.enemies.getChildren().find(e =>
+            e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= range
+        ) || null;
+    }
+
+    spawnBullet(x, y, angle, damage) {
         const bullet = this.bullets.get();
-        if(bullet) bullet.fire(x, y, angle);
+        if (bullet) bullet.fire(x, y, angle, damage);
     }
 
-    damageEnemy(enemy, bullet){
-        if(enemy.active && bullet.active){
-            bullet.setActive(false);
-            bullet.setVisible(false);
-            bullet.body.enable = false;
-            enemy.receiveDamage(20);
+    damageEnemy(enemy, bullet) {
+        if (enemy.active && bullet.active) {
+            enemy.receiveDamage(bullet.damage);
+            bullet.disableBody(true, true);
         }
     }
 }
