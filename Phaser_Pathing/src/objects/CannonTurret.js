@@ -1,13 +1,15 @@
-import Turret from './Turret.js';
+export default class CannonTurret extends Phaser.GameObjects.Sprite {
+    constructor(scene){
+        super(scene, 0, 0, 'towers', 'cannon');
+        scene.add.existing(this);
+        scene.physics.add.existing(this);
+        this.range = 200;
+    }
 
-export default class CannonTurret extends Turret {
-    constructor(scene) {
-        super(scene);
-        this.setTexture('sprites', 'cannon');
-        this.stats = {
-            1: { damage: 40, range: 150, fireRate: 1500 },
-            2: { damage: 60, range: 170, fireRate: 1300 },
-            3: { damage: 80, range: 200, fireRate: 1100 }
-        };
+    place(i, j){
+        this.x = j*64 + 32;
+        this.y = i*64 + 32;
+        this.setActive(true);
+        this.setVisible(true);
     }
 }

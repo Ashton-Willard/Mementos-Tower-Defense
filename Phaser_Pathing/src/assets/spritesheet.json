@@ -1,24 +1,13 @@
 {
   "frames": {
-    "enemy": {
-      "frame": { "x": 0, "y": 0, "w": 32, "h": 32 }
-    },
-    "fastEnemy": {
-      "frame": { "x": 32, "y": 0, "w": 32, "h": 32 }
-    },
-    "turret": {
-      "frame": { "x": 64, "y": 0, "w": 32, "h": 32 }
-    },
-    "cannon": {
-      "frame": { "x": 96, "y": 0, "w": 32, "h": 32 }
-    },
-    "bullet": {
-      "frame": { "x": 128, "y": 0, "w": 16, "h": 16 }
-    }
+    "lightningtower": { "frame": { "x": 0, "y": 0, "w": 80, "h": 80 } },
+    "icetower": { "frame": { "x": 60, "y": 0, "w": 80, "h": 80 } },
+    "firetower": { "frame": { "x": 120, "y": 0, "w": 80, "h": 80 } },
+    "rocktower": { "frame": { "x": 180, "y": 0, "w": 80, "h": 80 }}
   },
   "meta": {
     "image": "spritesheet.png",
-    "size": { "w": 160, "h": 32 },
+    "size": { "w": 400, "h": 80 },
     "scale": "1"
   }
 }
