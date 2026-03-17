@@ -24,10 +24,10 @@ export default class WaveManager {
     }
 
     update(time, delta) {
-        if (this.enemiesLeftInWave <=0) return;
+        if (this.enemiesLeftInWave <= 0) return;
 
         this.timeUntilNextSpawn -= delta;
-        if(this.timeUntilNextSpawn <=0){
+        if (this.timeUntilNextSpawn <= 0) {
             this.spawnEnemy();
             const wave = this.waves[this.currentWave];
             this.timeUntilNextSpawn = wave.rate;
@@ -37,17 +37,24 @@ export default class WaveManager {
     spawnEnemy() {
         const wave = this.waves[this.currentWave];
         let enemy;
-        if(wave.type == 'fast'){
-            enemy = this.enemies.get(FastEnemy);
-        }else {
-            enemy = this.enemies.get();
+
+        if (wave.type === 'fast') {
+            enemy = new FastEnemy(this.scene);
+        } else {
+            enemy = new Enemy(this.scene);
         }
-        if(!enemy) return;
+
+        this.enemies.add(enemy);
 
         enemy.setActive(true);
         enemy.setVisible(true);
         enemy.startOnPath(this.path);
 
         this.enemiesLeftInWave--;
+
+        if(this.enemiesLeftInWave <= 0) {
+            // Move to next wave after a short delay
+            this.scene.startButton.setVisible(true);
     }
+}
 }

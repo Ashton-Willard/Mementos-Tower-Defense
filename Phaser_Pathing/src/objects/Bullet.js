@@ -1,39 +1,52 @@
-export default class Bullet extends Phaser.GameObjects.Image {
-    constructor(scene) {
-        super(scene, 0, 0, 'bullet');
+export default class Bullet extends Phaser.Physics.Arcade.Image {
+    constructor(scene, x, y) {
+        // Create a physics-enabled image using the 'bullet' texture
+        super(scene, x, y, 'bullet');
+
+        // Add to scene display list + physics world
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.speed = 600;
-        this.lifespan = 0;
-        this.dx = 0;
-        this.dy = 0;
+        // Base bullet properties
+        this.speed = 300;   // how fast the bullet travels
+        this.damage = 0;    // damage assigned by turret on fire()
+
+        // Start disabled so the object pool doesn't show bullets early
+        this.setActive(false);
+        this.setVisible(false);
+        this.body.enable = false;
     }
 
-    fire(x, y, angle) {
+    fire(x, y, angle, damage) {
+        // Reactivate bullet from pool
         this.setActive(true);
         this.setVisible(true);
         this.body.enable = true;
 
+        // Position bullet at turret muzzle
         this.setPosition(x, y);
 
-        this.dx = Math.cos(angle);
-        this.dy = Math.sin(angle);
+        // Store damage for collision callback
+        this.damage = damage;
 
-        this.lifespan = 300;
+        // Rotate sprite to face travel direction
+        this.setRotation(angle);
+
+        // Apply velocity based on angle + speed
+        this.scene.physics.velocityFromRotation(
+            angle,
+            this.speed,
+            this.body.velocity
+        );
     }
 
     update(time, delta) {
-        if (!this.active) return;
-
-        this.lifespan -= delta;
-        this.x += this.dx * this.speed * (delta / 1000);
-        this.y += this.dy * this.speed * (delta / 1000);
-
-        if (this.lifespan <= 0) {
-            this.setActive(false);
-            this.setVisible(false);
-            this.body.enable = false;
+        // Auto-despawn bullets that leave the screen bounds
+        if (
+            this.x < 0 || this.x > this.scene.scale.width ||
+            this.y < 0 || this.y > this.scene.scale.height
+        ) {
+            this.disableBody(true, true); // return to pool
         }
     }
 }

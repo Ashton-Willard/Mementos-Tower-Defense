@@ -11,108 +11,152 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.atlas('sprites', 'src/assets/spritesheet.png', 'src/assets/spritesheet.json');
         this.load.image('bullet', 'src/assets/bullet.png');
+        this.load.tilemapTiledJSON('map1', 'src/assets/maps/map1.tmj');
+        this.load.image('tiles', 'src/assets/tiles.png');
+        this.load.image('enemy', 'src/assets/enemy.png');
+        this.load.image('turret', 'src/assets/turret.png');
     }
 
     create() {
 
-        // MAP MUST BE DEFINED
-        this.map = [
-            [ 0,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [ 0,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [ 0,-1,-1,-1,-1,-1,-1,-1, 0, 0, 0],
-            [ 0, 0, 0, 0, 0, 0, 0,-1, 0, 0, 0],
-            [ 0, 0, 0, 0, 0, 0, 0,-1, 0, 0, 0],
-            [ 0, 0, 0, 0, 0, 0, 0,-1, 0, 0, 0],
-            [ 0, 0, 0, 0, 0, 0, 0,-1, 0, 0, 0],
-            [ 0, 0, 0, 0, 0, 0, 0,-1, 0, 0, 0]
+        // ============================================================
+        // START WAVE BUTTON
+        // ============================================================
+        this.startButton = this.add.text(20, 20, "Start Wave", {
+            fontSize: "24px",
+            color: "#ffffff",
+            backgroundColor: "#000000",
+            padding: { x: 10, y: 5 }
+        })
+        .setInteractive()
+        .on('pointerdown', () => {
+            this.startNextRound();
+        });
+
+        this.startButton.setDepth(9999);
+        this.startButton.setScrollFactor(0);
+        this.startButton.setVisible(true);
+
+        // ============================================================
+        // MAP + TILESET
+        // ============================================================
+        this.map = this.make.tilemap({ key: 'map1' });
+        const tileset = this.map.addTilesetImage('Testing_Tileset', 'tiles');
+
+        this.map.createLayer('Tile Layer 1', tileset);
+        this.map.createLayer('Pathing', tileset);
+
+        // ============================================================
+        // BLOCKED TILES (path + buffer)
+        // ============================================================
+        const pathTiles = [
+            [3,19],[3,3],[5,2],[25,2],[26,4],[26,11],
+            [17,11],[14,7],[10,7],[8,9],[8,15],[10,16],[29,16]
         ];
 
-        // Draw grid
-        const graphics = this.add.graphics();
-        this.drawGrid(graphics);
+        this.blockedTiles = new Set();
 
-        // Create path
-        this.path = this.add.path(96, -32);
-        this.path.lineTo(96, 164);
-        this.path.lineTo(480, 164);
-        this.path.lineTo(480, 544);
+        for (const [x, y] of pathTiles) {
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    this.blockedTiles.add(`${x + dx},${y + dy}`);
+                }
+            }
+        }
 
-        const pathGraphics = this.add.graphics();
-        pathGraphics.lineStyle(3, 0xffffff, 1);
-        this.path.draw(pathGraphics);
+        // ============================================================
+        // HARDCODED PATH
+        // ============================================================
+        this.path = this.add.path();
 
-        // Enemy group
-        this.enemies = this.physics.add.group({
-            classType: Enemy,
-        });
+        this.path.moveTo(112, 624);
+        this.path.lineTo(112, 112);
+        this.path.lineTo(176, 80);
+        this.path.lineTo(816, 80);
+        this.path.lineTo(848, 144);
+        this.path.lineTo(848, 368);
+        this.path.lineTo(560, 368);
+        this.path.lineTo(464, 240);
+        this.path.lineTo(336, 240);
+        this.path.lineTo(272, 304);
+        this.path.lineTo(272, 496);
+        this.path.lineTo(336, 528);
+        this.path.lineTo(944, 528);
 
-        // Bullet group
-        this.bullets = this.physics.add.group({
-            classType: Bullet,
-            runChildUpdate: true
-        });
+        const debug = this.add.graphics();
+        debug.lineStyle(4, 0xff0000, 1);
+        this.path.draw(debug);
 
-        // Turret group
-        this.turrets = this.add.group({
-            classType: Turret,
-            runChildUpdate: true
-        });
+        // ============================================================
+        // GROUPS
+        // ============================================================
+        this.enemies = this.physics.add.group({ classType: Enemy });
+        this.bullets = this.physics.add.group({ classType: Bullet });
+        this.turrets = this.add.group({ classType: Turret });
 
-        // Default tower type
         this.currentTowerType = 'basic';
 
-        // Input
         this.input.on('pointerdown', this.placeTurret, this);
 
-        // Wave manager
+        // ============================================================
+        // WAVE MANAGER
+        // ============================================================
         this.waveManager = new WaveManager(this, this.enemies, this.path);
-        this.waveManager.startWave();
 
-        // Bullet collision
+        // ============================================================
+        // COLLISIONS
+        // ============================================================
         this.physics.add.overlap(this.enemies, this.bullets, this.damageEnemy, null, this);
     }
 
+    // ============================================================
+    // START NEXT ROUND
+    // ============================================================
+    startNextRound() {
+        this.startButton.setVisible(false);   // hide button during wave
+        this.waveManager.startWave();         // start wave properly
+    }
+
+    // ============================================================
+    // UPDATE LOOP
+    // ============================================================
     update(time, delta) {
+        if (!this.waveManager) return;
+
         this.waveManager.update(time, delta);
 
-        // manually updates enemies with path
         this.enemies.getChildren().forEach(enemy => {
-            if(enemy.active){
-                enemy.update(time, delta, this.path);
-            }
+            if (enemy.active) enemy.update(time, delta, this.path);
+        });
+
+        this.bullets.getChildren().forEach(bullet => {
+            if (bullet.active) bullet.update(time, delta);
+        });
+
+        this.turrets.getChildren().forEach(turret => {
+            if (turret.active) turret.update(time, delta);
         });
     }
 
-    drawGrid(graphics) {
-        graphics.lineStyle(1, 0x0000ff, 0.8);
-
-        for (let i = 0; i < 8; i++) {
-            graphics.moveTo(0, i * 64);
-            graphics.lineTo(640, i * 64);
-        }
-
-        for (let j = 0; j < 10; j++) {
-            graphics.moveTo(j * 64, 0);
-            graphics.lineTo(j * 64, 512);
-        }
-
-        graphics.strokePath();
+    // ============================================================
+    // TURRET PLACEMENT
+    // ============================================================
+    canPlaceTurret(i, j) {
+        return !this.blockedTiles.has(`${j},${i}`);
     }
 
     placeTurret(pointer) {
-        const i = Math.floor(pointer.y / 64);
-        const j = Math.floor(pointer.x / 64);
+        const i = Math.floor(pointer.y / 32);
+        const j = Math.floor(pointer.x / 32);
 
-        if(!this.canPlaceTurret(i, j)) return;
-        let turret;
+        console.log("Clicked tile:", j, i, "Blocked:", this.blockedTiles.has(`${j},${i}`));
 
-        if(this.currentTowerType === 'basic'){
-            turret = this.turrets.get(Turret);
-        } else if (this.currentTowerType === 'cannon'){
-            turret = this.turrets.get(CannonTurret);
-        }
+        if (!this.canPlaceTurret(i, j)) return;
+
+        const turret = this.currentTowerType === 'basic'
+            ? this.turrets.get(Turret)
+            : this.turrets.get(CannonTurret);
 
         if (turret) {
             turret.setActive(true);
@@ -121,32 +165,24 @@ export default class MainScene extends Phaser.Scene {
         }
     }
 
-    canPlaceTurret(i, j) {
-        return this.map[i][j] === 0;
-    }
-
+    // ============================================================
+    // BULLET + DAMAGE
+    // ============================================================
     getEnemyInRange(x, y, range) {
-        const enemies = this.enemies.getChildren();
-        for (let e of enemies) {
-            if (e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= range) {
-                return e;
-            }
-        }
-        return null;
+        return this.enemies.getChildren().find(e =>
+            e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= range
+        ) || null;
     }
 
-    spawnBullet(x, y, angle) {
+    spawnBullet(x, y, angle, damage) {
         const bullet = this.bullets.get();
-        if (bullet) bullet.fire(x, y, angle);
+        if (bullet) bullet.fire(x, y, angle, damage);
     }
 
     damageEnemy(enemy, bullet) {
         if (enemy.active && bullet.active) {
-            bullet.setActive(false);
-            bullet.setVisible(false);
-            bullet.body.enable = false;
-
-            enemy.receiveDamage(20);
+            enemy.receiveDamage(bullet.damage);
+            bullet.disableBody(true, true);
         }
     }
 }
