@@ -9,6 +9,9 @@ export default class Enemy extends Phaser.GameObjects.Image {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
+        // Movement speed
+        this.speed = 0.00003;
+
         this.maxHp = 100;
         this.hp = 100;
 
@@ -27,7 +30,7 @@ export default class Enemy extends Phaser.GameObjects.Image {
     }
 
     update(time, delta, path) {
-        this.follower.t += 0.0001 * delta;
+        this.follower.t += this.speed * delta;
 
         path.getPoint(this.follower.t, this.follower.vec);
         this.setPosition(this.follower.vec.x, this.follower.vec.y);

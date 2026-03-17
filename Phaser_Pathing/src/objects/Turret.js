@@ -4,6 +4,7 @@ export default class Turret extends Phaser.GameObjects.Image {
         scene.add.existing(this);
 
         this.level = 1;
+
         this.stats = {
             1: { damage: 20, range: 100, fireRate: 1000 },
             2: { damage: 35, range: 120, fireRate: 900 },
@@ -14,6 +15,7 @@ export default class Turret extends Phaser.GameObjects.Image {
         this.range = s.range;
         this.fireRate = s.fireRate;
         this.damage = s.damage;
+
         this.nextShot = 0;
     }
 
@@ -34,7 +36,8 @@ export default class Turret extends Phaser.GameObjects.Image {
         if (!enemy) return;
 
         const angle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
-        this.scene.spawnBullet(this.x, this.y, angle);
+
+        this.scene.spawnBullet(this.x, this.y, angle, this.damage);
 
         this.rotation = angle + Math.PI / 2;
     }
