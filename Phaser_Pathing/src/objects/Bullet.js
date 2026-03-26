@@ -8,7 +8,7 @@ export default class Bullet extends Phaser.Physics.Arcade.Image {
         scene.physics.add.existing(this);
 
         // Base bullet properties
-        this.speed = 300;   // how fast the bullet travels
+        this.speed = 2000;   // how fast the bullet travels
         this.damage = 0;    // damage assigned by turret on fire()
 
         // Start disabled so the object pool doesn't show bullets early

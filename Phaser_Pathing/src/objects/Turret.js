@@ -1,7 +1,9 @@
+// Turret.js
+
 const TOWER_STATS = {
     lightningtower: {
-        range: 200,
-        fireRate: 1200,
+        range: 1000,
+        fireRate: 1,
         damage: 25
     },
     icetower: {
@@ -24,7 +26,8 @@ const TOWER_STATS = {
 export default class Turret extends Phaser.GameObjects.Sprite {
 
     constructor(scene, type) {
-        super(scene, 0, 0, 'towers', type);
+        // ✅ Use correct texture key and type
+        super(scene, 0, 0, 'turret', 0);
 
         scene.add.existing(this);
 
@@ -37,14 +40,25 @@ export default class Turret extends Phaser.GameObjects.Sprite {
         this.damage = stats.damage;
 
         this.lastFired = 0;
+
+        // Ensure fully visible in case of reused object
+        this.setAlpha(1);
+        this.clearTint();
+        this.setScale(1);
     }
 
+    // ==========================================================
+    // PLACE TURRET ON GRID
+    // ==========================================================
     place(row, col) {
-        const cellSize = 64;
+        const cellSize = 64; // matches MainScene grid
         this.x = col * cellSize + cellSize / 2;
         this.y = row * cellSize + cellSize / 2;
     }
 
+    // ==========================================================
+    // UPDATE LOOP
+    // ==========================================================
     update(time) {
         if (time > this.lastFired + this.fireRate) {
 
@@ -58,7 +72,8 @@ export default class Turret extends Phaser.GameObjects.Sprite {
                     enemy.y
                 );
 
-                this.scene.spawnBullet(this.x, this.y, angle);
+                // spawn bullet with damage
+                this.scene.spawnBullet(this.x, this.y, angle, this.damage);
 
                 this.lastFired = time;
             }
