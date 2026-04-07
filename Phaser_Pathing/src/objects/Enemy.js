@@ -20,6 +20,9 @@ export default class Enemy extends Phaser.GameObjects.Image {
 
         // Health bar
         this.healthbar = new HealthBar(scene, this);
+
+        // Reward for defeating enemy
+        this.reward = 10;
     }
 
     startOnPath(path) {
@@ -42,6 +45,7 @@ export default class Enemy extends Phaser.GameObjects.Image {
             this.setActive(false);
             this.setVisible(false);
             this.body.enable = false;
+            this.die(false);
         }
     }
 
@@ -53,6 +57,24 @@ export default class Enemy extends Phaser.GameObjects.Image {
             this.setVisible(false);
             this.body.enable = false;
             this.healthbar.destroy();
+            this.die(true);
+        }
+    }
+
+    die(giveGold = true) {
+        this.setActive(false);
+        this.setVisible(false);
+        this.body.enable = false;
+
+        // Award for defeating enemy
+        if(this.scene.addGold && giveGold){
+            this.scene.addGold(this.reward);
+        }
+
+        
+        this.healthbar.destroy();
+        if(this.onDeath) {
+            this.onDeath();
         }
     }
 }
