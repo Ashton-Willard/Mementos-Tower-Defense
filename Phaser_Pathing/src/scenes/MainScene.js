@@ -21,22 +21,22 @@ export default class MainScene extends Phaser.Scene {
     create() {
 
         // ============================================================
-        // START WAVE BUTTON
+        // START WAVE BUTTON (only one!)
         // ============================================================
-        this.startButton = this.add.text(20, 20, "Start Wave", {
-            fontSize: "24px",
+        this.roundButton = this.add.text(20, 20, "Start", {
+            fontSize: "32px",
             color: "#ffffff",
             backgroundColor: "#000000",
             padding: { x: 10, y: 5 }
         })
         .setInteractive()
         .on('pointerdown', () => {
-            this.startNextRound();
+            this.roundButton.setVisible(false);
+            this.waveManager.startNextWave();
         });
 
-        this.startButton.setDepth(9999);
-        this.startButton.setScrollFactor(0);
-        this.startButton.setVisible(true);
+        this.roundButton.setDepth(9999);
+        this.roundButton.setScrollFactor(0);
 
         // ============================================================
         // MAP + TILESET
@@ -108,23 +108,28 @@ export default class MainScene extends Phaser.Scene {
         // COLLISIONS
         // ============================================================
         this.physics.add.overlap(this.enemies, this.bullets, this.damageEnemy, null, this);
-    }
 
-    // ============================================================
-    // START NEXT ROUND
-    // ============================================================
-    startNextRound() {
-        this.startButton.setVisible(false);   // hide button during wave
-        this.waveManager.startWave();         // start wave properly
+        // ============================================================
+        // Gold/Money System
+        // ============================================================
+        this.gold = 500;
+
+        this.goldText = this.add.text(700, 590, `Gold: ${this.gold}`,{
+            fontSize: "28px",
+            color: "#ffff00",
+            // backgroundColor: "000000",
+            padding: { x: 10, y: 5 }
+        }). setScrollFactor(0).setDepth(9999);
+
     }
 
     // ============================================================
     // UPDATE LOOP
     // ============================================================
     update(time, delta) {
-        if (!this.waveManager) return;
-
-        this.waveManager.update(time, delta);
+        if (this.waveManager) {
+            this.waveManager.update(time, delta);
+        }
 
         this.enemies.getChildren().forEach(enemy => {
             if (enemy.active) enemy.update(time, delta, this.path);
@@ -137,6 +142,8 @@ export default class MainScene extends Phaser.Scene {
         this.turrets.getChildren().forEach(turret => {
             if (turret.active) turret.update(time, delta);
         });
+
+
     }
 
     // ============================================================
@@ -184,5 +191,10 @@ export default class MainScene extends Phaser.Scene {
             enemy.receiveDamage(bullet.damage);
             bullet.disableBody(true, true);
         }
+    }
+
+    addGold(amount) {
+        this.gold += amount;
+        this.goldText.setText(`Gold: ${this.gold}`);
     }
 }
