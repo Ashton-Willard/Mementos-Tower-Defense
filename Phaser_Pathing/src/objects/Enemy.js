@@ -23,6 +23,9 @@ export default class Enemy extends Phaser.GameObjects.Image {
 
         // Reward for defeating enemy
         this.reward = 10;
+
+        // How much damage enemy does
+        this.leakDamage = 1;
     }
 
     startOnPath(path) {
@@ -41,12 +44,43 @@ export default class Enemy extends Phaser.GameObjects.Image {
         this.healthbar.update();
 
         if (this.follower.t >= 1) {
-            this.healthbar.destroy();
-            this.setActive(false);
-            this.setVisible(false);
-            this.body.enable = false;
-            this.die(false);
+
+        // Floating leak popup
+        const dmgText = this.scene.add.text(this.x, this.y, `-${this.leakDamage}`, {
+            fontSize: "20px",
+            color: "#ff0000"
+        });
+        this.scene.tweens.add({
+            targets: dmgText,
+            y: this.y - 30,
+            alpha: 0,
+            duration: 600,
+            onComplete: () => dmgText.destroy()
+        });
+
+        // Lose lives
+        if (this.scene.loseLives) {
+            this.scene.loseLives(this.leakDamage);
         }
+
+        this.healthbar.destroy();
+        this.setActive(false);
+        this.setVisible(false);
+        this.body.enable = false;
+        this.die(false);
+    }
+
+        // const dmgText = this.scene.add.text(this.x, this.y, `-${this.leakDamage}`,{
+        //     fontSize: "16px",
+        //     color: "#ff0000",
+        // });
+        // this.scene.tweens.add({
+        //     targets: dmgText,
+        //     y: this.y - 30,
+        //     alpha: 0,
+        //     duration: 600,
+        //     onComplete: ()=> dmgText.destroy()
+        // });
     }
 
     receiveDamage(amount) {
