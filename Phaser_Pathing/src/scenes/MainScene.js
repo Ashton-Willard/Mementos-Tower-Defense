@@ -117,9 +117,17 @@ export default class MainScene extends Phaser.Scene {
         this.goldText = this.add.text(700, 590, `Gold: ${this.gold}`,{
             fontSize: "28px",
             color: "#ffff00",
-            // backgroundColor: "000000",
+            backgroundColor: "#000000",
             padding: { x: 10, y: 5 }
         }). setScrollFactor(0).setDepth(9999);
+
+        this.lives = 100;
+        this.livesText = this.add.text(20, 110, `Lives: ${this.lives}`, {
+            fontSize: "28px",
+            color: "#ffff00",
+            backgroundColor: "#000000",
+            padding: { x: 10, y: 5 }
+        }).setScrollFactor(0).setDepth(9999);
 
     }
 
@@ -197,4 +205,34 @@ export default class MainScene extends Phaser.Scene {
         this.gold += amount;
         this.goldText.setText(`Gold: ${this.gold}`);
     }
+
+    loseLives(amount) {
+        this.lives -= amount;
+        if(this.lives < 0) this.lives = 0;
+        console.log("Lives:", this.lives, "Amount:", amount, "Type:", typeof amount);
+        this.livesText.setText(`Lives: ${this.lives}`);
+
+        if(this.lives === 0) {
+            this.gameOver();
+            this.gameoverText = this.add.text(
+                this.cameras.main.centerX, 
+                this.cameras.main.centerY, 
+                "You Have Died!", {
+                fontSize: "64px",
+                color: "#ff0000",
+                backgroundColor: "#000000",
+                padding: { x: 20, y: 10 }
+            })
+            .setOrigin(0.5)
+            .setDepth(9999)
+            .setScrollFactor(0);
+        }
+    }
+
+    gameOver() {
+        console.log("You Have Died.");
+        this.scene.pause();
+    }
+
+    
 }

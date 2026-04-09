@@ -17,6 +17,9 @@ export default class FastEnemy extends Enemy {
         // Reward for defeating enemy
         this.goldReward = 5;
 
+        // Fast Enenmy damage
+        this.leakDamage = 2;
+
         // Update healthbar to reflect new maxHp
         this.healthbar.update();
     }
