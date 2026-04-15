@@ -1,7 +1,6 @@
 import Enemy from '../objects/Enemy.js';
 import FastEnemy from '../objects/FastEnemy.js';
 import Turret from '../objects/Turret.js';
-import CannonTurret from '../objects/CannonTurret.js';
 import Bullet from '../objects/Bullet.js';
 import WaveManager from '../systems/WaveManager.js';
 
@@ -14,17 +13,40 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('bullet', 'src/assets/bullet.png');
         this.load.tilemapTiledJSON('map1', 'src/assets/maps/map1.tmj');
         this.load.image('tiles', 'src/assets/tiles.png');
-        this.load.image('enemy', 'src/assets/enemy.png');
-        this.load.image('turret', 'src/assets/turret.png');
+        this.load.image('enemy_shadow', 'src/assets/enemies/enemy_shadow.png');
+
+        // Spritesheet for 4 turret types
+        this.load.spritesheet('turret', 'src/assets/spritesheet.png', {
+            frameWidth: 66,
+            frameHeight: 50 
+        });
     }
 
     create() {
 
         // ============================================================
-        // START WAVE BUTTON (only one!)
+        // MONEY + LIVES SYSTEM
         // ============================================================
-        this.roundButton = this.add.text(20, 20, "Start", {
-            fontSize: "32px",
+        this.money = 500;
+        this.lives = 100;
+
+        this.moneyText = this.add.text(20, 60, `Money: $${this.money}`, {
+            fontSize: "20px",
+            color: "#00ff00"
+        }).setScrollFactor(0).setDepth(9999);
+
+        this.livesText = this.add.text(20, 110, `Lives: ${this.lives}`, {
+            fontSize: "24px",
+            color: "#ffff00",
+            backgroundColor: "#000000",
+            padding: { x: 10, y: 5 }
+        }).setScrollFactor(0).setDepth(9999);
+
+        // ============================================================
+        // START WAVE BUTTON
+        // ============================================================
+        this.roundButton = this.add.text(20, 20, "Start Wave", {
+            fontSize: "24px",
             color: "#ffffff",
             backgroundColor: "#000000",
             padding: { x: 10, y: 5 }
@@ -35,11 +57,10 @@ export default class MainScene extends Phaser.Scene {
             this.waveManager.startNextWave();
         });
 
-        this.roundButton.setDepth(9999);
-        this.roundButton.setScrollFactor(0);
+        this.roundButton.setDepth(9999).setScrollFactor(0);
 
         // ============================================================
-        // MAP + TILESET
+        // MAP
         // ============================================================
         this.map = this.make.tilemap({ key: 'map1' });
         const tileset = this.map.addTilesetImage('Testing_Tileset', 'tiles');
@@ -48,7 +69,7 @@ export default class MainScene extends Phaser.Scene {
         this.map.createLayer('Pathing', tileset);
 
         // ============================================================
-        // BLOCKED TILES (path + buffer)
+        // BLOCKED TILES
         // ============================================================
         const pathTiles = [
             [3,19],[3,3],[5,2],[25,2],[26,4],[26,11],
@@ -66,10 +87,9 @@ export default class MainScene extends Phaser.Scene {
         }
 
         // ============================================================
-        // HARDCODED PATH
+        // PATH
         // ============================================================
         this.path = this.add.path();
-
         this.path.moveTo(112, 624);
         this.path.lineTo(112, 112);
         this.path.lineTo(176, 80);
@@ -93,11 +113,140 @@ export default class MainScene extends Phaser.Scene {
         // ============================================================
         this.enemies = this.physics.add.group({ classType: Enemy });
         this.bullets = this.physics.add.group({ classType: Bullet });
-        this.turrets = this.add.group({ classType: Turret });
+        this.turrets = this.add.group(); // supports all turret types
 
-        this.currentTowerType = 'basic';
+        // ============================================================
+        // SIDEBAR
+        // ============================================================
+        const sidebarX = this.cameras.main.width - 160;
 
-        this.input.on('pointerdown', this.placeTurret, this);
+        this.add.rectangle(
+            sidebarX,
+            0,
+            160,
+            this.cameras.main.height,
+            0x222222
+        ).setOrigin(0, 0)
+         .setScrollFactor(0)
+         .setDepth(9998);
+
+        // ============================================================
+        // TOWER DATA (4 turret types)
+        // ============================================================
+        this.towerData = {
+            lightningtower: { cost: 100, frame: 0 },
+            icetower:       { cost: 120, frame: 1 },
+            firetower:      { cost: 150, frame: 2 },
+            rocktower:      { cost: 200, frame: 3 }
+        };
+
+        // ============================================================
+        // CREATE SIDEBAR ICONS
+        // ============================================================
+        let yOffset = 120;
+
+        Object.keys(this.towerData).forEach(type => {
+            const data = this.towerData[type];
+
+            const icon = this.add.image(
+                sidebarX + 80,
+                yOffset,
+                'turret',
+                data.frame
+            )
+            .setInteractive()
+            .setScrollFactor(0)
+            .setDepth(9999)
+            .setScale(0.7);
+
+            this.add.text(sidebarX + 40, yOffset + 50, `$${data.cost}`, {
+                fontSize: "16px",
+                color: "#ffffff"
+            }).setScrollFactor(0).setDepth(9999);
+
+            icon.towerType = type;
+            this.input.setDraggable(icon);
+
+            yOffset += 140;
+        });
+
+        // ============================================================
+        // DRAG STATE
+        // ============================================================
+        this.draggingTower = null;
+        this.draggingType = null;
+
+        // ============================================================
+        // DRAG EVENTS
+        // ============================================================
+        this.input.on('dragstart', (pointer, gameObject) => {
+            if (!gameObject.towerType) return;
+
+            const type = gameObject.towerType;
+            const data = this.towerData[type];
+
+            if (this.money < data.cost) return;
+
+            this.draggingType = type;
+
+            this.draggingTower = this.add.image(
+                pointer.x,
+                pointer.y,
+                'turret',
+                data.frame
+            )
+            .setAlpha(0.5)
+            .setDepth(9999);
+        });
+
+        this.input.on('drag', (pointer) => {
+            if (!this.draggingTower) return;
+
+            const snappedX = Math.floor(pointer.x / 64) * 64 + 32;
+            const snappedY = Math.floor(pointer.y / 64) * 64 + 32;
+
+            this.draggingTower.setPosition(snappedX, snappedY);
+
+            const i = Math.floor(pointer.y / 64);
+            const j = Math.floor(pointer.x / 64);
+
+            if (this.canPlaceTurret(i, j)) {
+                this.draggingTower.setTint(0xffffff);
+            } else {
+                this.draggingTower.setTint(0xff0000);
+            }
+        });
+
+        this.input.on('dragend', (pointer) => {
+            if (!this.draggingTower) return;
+
+            const i = Math.floor(pointer.y / 64);
+            const j = Math.floor(pointer.x / 64);
+
+            const data = this.towerData[this.draggingType];
+
+            if (this.canPlaceTurret(i, j) && this.money >= data.cost) {
+
+                const turret = new Turret(this, this.draggingType);
+
+                this.add.existing(turret);
+                this.turrets.add(turret);
+
+                turret.setTexture('turret', data.frame);
+                turret.setAlpha(1);
+                turret.clearTint();
+                turret.setScale(1);
+
+                turret.place(i, j);
+
+                this.money -= data.cost;
+                this.moneyText.setText(`Money: $${this.money}`);
+            }
+
+            this.draggingTower.destroy();
+            this.draggingTower = null;
+            this.draggingType = null;
+        });
 
         // ============================================================
         // WAVE MANAGER
@@ -108,27 +257,6 @@ export default class MainScene extends Phaser.Scene {
         // COLLISIONS
         // ============================================================
         this.physics.add.overlap(this.enemies, this.bullets, this.damageEnemy, null, this);
-
-        // ============================================================
-        // Gold/Money System
-        // ============================================================
-        this.gold = 500;
-
-        this.goldText = this.add.text(700, 590, `Gold: ${this.gold}`,{
-            fontSize: "28px",
-            color: "#ffff00",
-            backgroundColor: "#000000",
-            padding: { x: 10, y: 5 }
-        }). setScrollFactor(0).setDepth(9999);
-
-        this.lives = 100;
-        this.livesText = this.add.text(20, 110, `Lives: ${this.lives}`, {
-            fontSize: "28px",
-            color: "#ffff00",
-            backgroundColor: "#000000",
-            padding: { x: 10, y: 5 }
-        }).setScrollFactor(0).setDepth(9999);
-
     }
 
     // ============================================================
@@ -150,34 +278,15 @@ export default class MainScene extends Phaser.Scene {
         this.turrets.getChildren().forEach(turret => {
             if (turret.active) turret.update(time, delta);
         });
-
-
     }
 
     // ============================================================
     // TURRET PLACEMENT
     // ============================================================
     canPlaceTurret(i, j) {
+        const worldX = j * 64;
+        if (worldX > this.cameras.main.width - 160) return false;
         return !this.blockedTiles.has(`${j},${i}`);
-    }
-
-    placeTurret(pointer) {
-        const i = Math.floor(pointer.y / 32);
-        const j = Math.floor(pointer.x / 32);
-
-        console.log("Clicked tile:", j, i, "Blocked:", this.blockedTiles.has(`${j},${i}`));
-
-        if (!this.canPlaceTurret(i, j)) return;
-
-        const turret = this.currentTowerType === 'basic'
-            ? this.turrets.get(Turret)
-            : this.turrets.get(CannonTurret);
-
-        if (turret) {
-            turret.setActive(true);
-            turret.setVisible(true);
-            turret.place(i, j);
-        }
     }
 
     // ============================================================
@@ -201,38 +310,40 @@ export default class MainScene extends Phaser.Scene {
         }
     }
 
+    // ============================================================
+    // LIVES + GOLD
+    // ============================================================
     addGold(amount) {
-        this.gold += amount;
-        this.goldText.setText(`Gold: ${this.gold}`);
+        this.money += amount;
+        this.moneyText.setText(`Money: $${this.money}`);
     }
 
     loseLives(amount) {
         this.lives -= amount;
-        if(this.lives < 0) this.lives = 0;
-        console.log("Lives:", this.lives, "Amount:", amount, "Type:", typeof amount);
+        if (this.lives < 0) this.lives = 0;
+
         this.livesText.setText(`Lives: ${this.lives}`);
 
-        if(this.lives === 0) {
+        if (this.lives === 0) {
             this.gameOver();
-            this.gameoverText = this.add.text(
-                this.cameras.main.centerX, 
-                this.cameras.main.centerY, 
-                "You Have Died!", {
-                fontSize: "64px",
-                color: "#ff0000",
-                backgroundColor: "#000000",
-                padding: { x: 20, y: 10 }
-            })
-            .setOrigin(0.5)
-            .setDepth(9999)
-            .setScrollFactor(0);
         }
     }
 
     gameOver() {
-        console.log("You Have Died.");
         this.scene.pause();
+        this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY,
+            "You Have Died!",
+            {
+                fontSize: "64px",
+                color: "#ff0000",
+                backgroundColor: "#000000",
+                padding: { x: 20, y: 10 }
+            }
+        )
+        .setOrigin(0.5)
+        .setDepth(9999)
+        .setScrollFactor(0);
     }
-
-    
 }

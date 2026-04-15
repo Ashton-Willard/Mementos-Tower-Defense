@@ -1,54 +1,82 @@
-export default class Turret extends Phaser.GameObjects.Image {
-    constructor(scene) {
-        super(scene, 0, 0, 'turret');
+// Turret.js
+
+const TOWER_STATS = {
+    lightningtower: {
+        range: 1000,
+        fireRate: 1,
+        damage: 25
+    },
+    icetower: {
+        range: 150,
+        fireRate: 800,
+        damage: 10
+    },
+    firetower: {
+        range: 170,
+        fireRate: 700,
+        damage: 12
+    },
+    rocktower: {
+        range: 220,
+        fireRate: 1500,
+        damage: 40
+    }
+};
+
+export default class Turret extends Phaser.GameObjects.Sprite {
+
+    constructor(scene, type) {
+        // ✅ Use correct texture key and type
+        super(scene, 0, 0, 'turret', 0);
+
         scene.add.existing(this);
 
-        this.level = 1;
+        this.type = type;
 
-        this.stats = {
-            1: { damage: 20, range: 100, fireRate: 1000 },
-            2: { damage: 35, range: 120, fireRate: 900 },
-            3: { damage: 50, range: 140, fireRate: 750 }
-        };
+        const stats = TOWER_STATS[type];
 
-        const s = this.stats[this.level];
-        this.range = s.range;
-        this.fireRate = s.fireRate;
-        this.damage = s.damage;
+        this.range = stats.range;
+        this.fireRate = stats.fireRate;
+        this.damage = stats.damage;
 
-        this.nextShot = 0;
+        this.lastFired = 0;
+
+        // Ensure fully visible in case of reused object
+        this.setAlpha(1);
+        this.clearTint();
+        this.setScale(1);
     }
 
-    place(i, j) {
-        this.x = j * 32 + 16;
-        this.y = i * 32 + 16;
+    // ==========================================================
+    // PLACE TURRET ON GRID
+    // ==========================================================
+    place(row, col) {
+        const cellSize = 64; // matches MainScene grid
+        this.x = col * cellSize + cellSize / 2;
+        this.y = row * cellSize + cellSize / 2;
     }
 
-    update(time, delta) {
-        if (time > this.nextShot) {
-            this.fire();
-            this.nextShot = time + this.fireRate;
-        }
-    }
+    // ==========================================================
+    // UPDATE LOOP
+    // ==========================================================
+    update(time) {
+        if (time > this.lastFired + this.fireRate) {
 
-    fire() {
-        const enemy = this.scene.getEnemyInRange(this.x, this.y, this.range);
-        if (!enemy) return;
+            const enemy = this.scene.getEnemyInRange(this.x, this.y, this.range);
 
-        const angle = Phaser.Math.Angle.Between(this.x, this.y, enemy.x, enemy.y);
+            if (enemy) {
+                const angle = Phaser.Math.Angle.Between(
+                    this.x,
+                    this.y,
+                    enemy.x,
+                    enemy.y
+                );
 
-        this.scene.spawnBullet(this.x, this.y, angle, this.damage);
+                // spawn bullet with damage
+                this.scene.spawnBullet(this.x, this.y, angle, this.damage);
 
-        this.rotation = angle + Math.PI / 2;
-    }
-
-    upgrade() {
-        if (this.level < 3) {
-            this.level++;
-            const s = this.stats[this.level];
-            this.range = s.range;
-            this.fireRate = s.fireRate;
-            this.damage = s.damage;
+                this.lastFired = time;
+            }
         }
     }
 }
