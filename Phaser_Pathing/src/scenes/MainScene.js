@@ -15,7 +15,6 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('tiles', 'src/assets/tiles.png');
         this.load.image('enemy_shadow', 'src/assets/enemies/enemy_shadow.png');
 
-        // Spritesheet for 4 turret types
         this.load.spritesheet('turret', 'src/assets/spritesheet.png', {
             frameWidth: 66,
             frameHeight: 50 
@@ -23,6 +22,15 @@ export default class MainScene extends Phaser.Scene {
     }
 
     create() {
+
+        // ============================================================
+        // RESPONSIVE SCALING
+        // ============================================================
+        const screenW = this.scale.width;
+        const screenH = this.scale.height;
+
+        this.sidebarWidth = screenW * 0.20;   // 20% sidebar
+        this.playWidth = screenW - this.sidebarWidth;
 
         // ============================================================
         // MONEY + LIVES SYSTEM
@@ -69,11 +77,38 @@ export default class MainScene extends Phaser.Scene {
         this.map.createLayer('Pathing', tileset);
 
         // ============================================================
+        // SCALE MAP TO FIT PLAY AREA (ONLY SCALE TILEMAP LAYERS)
+        // ============================================================
+        const scaleX = this.playWidth / this.map.widthInPixels;
+        const scaleY = screenH / this.map.heightInPixels;
+        const mapScale = Math.max(scaleX, scaleY);
+
+        this.map.layers.forEach(layer => {
+            layer.tilemapLayer.setScale(mapScale);
+        });
+
+        // Fix camera after scaling
+        this.cameras.main.setBounds(0, 0, this.playWidth, screenH);
+        this.cameras.main.setScroll(0, 0);
+        this.cameras.main.setZoom(1);
+
+        // ============================================================
         // BLOCKED TILES
         // ============================================================
         const pathTiles = [
-            [3,19],[3,3],[5,2],[25,2],[26,4],[26,11],
-            [17,11],[14,7],[10,7],[8,9],[8,15],[10,16],[29,16]
+            [3,19],
+            [3,3],
+            [5,2],
+            [25,2],
+            [26,4],
+            [26,11],
+            [17,11],
+            [14,7],
+            [10,7],
+            [8,9],
+            [8,15],
+            [10,16],
+            [29,16]
         ];
 
         this.blockedTiles = new Set();
@@ -85,24 +120,40 @@ export default class MainScene extends Phaser.Scene {
                 }
             }
         }
+        const blockedDebug = this.add.graphics();
+        blockedDebug.fillStyle(0xff0000, 0.25); // red tint, 25% opacity
+
+        this.blockedTiles.forEach(key => {
+            const [x, y] = key.split(',').map(Number);
+
+            blockedDebug.fillRect(
+                x * 64 * mapScale,
+                y * 64 * mapScale,
+                64 * mapScale,
+                64 * mapScale
+            );
+        });
+
 
         // ============================================================
-        // PATH
+        // PATH (DO NOT SCALE PATH)
         // ============================================================
         this.path = this.add.path();
-        this.path.moveTo(112, 624);
-        this.path.lineTo(112, 112);
-        this.path.lineTo(176, 80);
-        this.path.lineTo(816, 80);
-        this.path.lineTo(848, 144);
-        this.path.lineTo(848, 368);
-        this.path.lineTo(560, 368);
-        this.path.lineTo(464, 240);
-        this.path.lineTo(336, 240);
-        this.path.lineTo(272, 304);
-        this.path.lineTo(272, 496);
-        this.path.lineTo(336, 528);
-        this.path.lineTo(944, 528);
+        const P = (x, y) => ({ x: x * mapScale, y: y * mapScale});
+
+        this.path.moveTo(P(112, 624).x, P(112, 624).y);
+        this.path.lineTo(P(112, 112).x, P(112, 112).y);
+        this.path.lineTo(P(176, 80).x, P(176, 80).y);
+        this.path.lineTo(P(816, 80).x, P(816, 80).y);
+        this.path.lineTo(P(848, 144).x, P(848, 144).y);
+        this.path.lineTo(P(848, 368).x, P(848, 368).y);
+        this.path.lineTo(P(560, 368).x, P(560, 368).y);
+        this.path.lineTo(P(464, 240).x, P(464, 240).y);
+        this.path.lineTo(P(336, 240).x, P(336, 240).y);
+        this.path.lineTo(P(272, 304).x, P(272, 304).y);
+        this.path.lineTo(P(272, 496).x, P(272, 496).y);
+        this.path.lineTo(P(336, 528).x, P(336, 528).y);
+        this.path.lineTo(P(944, 528).x, P(944, 528).y);
 
         const debug = this.add.graphics();
         debug.lineStyle(4, 0xff0000, 1);
@@ -113,25 +164,26 @@ export default class MainScene extends Phaser.Scene {
         // ============================================================
         this.enemies = this.physics.add.group({ classType: Enemy });
         this.bullets = this.physics.add.group({ classType: Bullet });
-        this.turrets = this.add.group(); // supports all turret types
+        this.turrets = this.add.group();
 
         // ============================================================
         // SIDEBAR
         // ============================================================
-        const sidebarX = this.cameras.main.width - 160;
+        const sidebarX = this.playWidth;
 
         this.add.rectangle(
             sidebarX,
             0,
-            160,
-            this.cameras.main.height,
+            this.sidebarWidth,
+            screenH,
             0x222222
-        ).setOrigin(0, 0)
-         .setScrollFactor(0)
-         .setDepth(9998);
+        )
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(9998);
 
         // ============================================================
-        // TOWER DATA (4 turret types)
+        // TOWER DATA
         // ============================================================
         this.towerData = {
             lightningtower: { cost: 100, frame: 0 },
@@ -141,7 +193,7 @@ export default class MainScene extends Phaser.Scene {
         };
 
         // ============================================================
-        // CREATE SIDEBAR ICONS
+        // SIDEBAR ICONS
         // ============================================================
         let yOffset = 120;
 
@@ -285,7 +337,7 @@ export default class MainScene extends Phaser.Scene {
     // ============================================================
     canPlaceTurret(i, j) {
         const worldX = j * 64;
-        if (worldX > this.cameras.main.width - 160) return false;
+        if (worldX > this.playWidth) return false;
         return !this.blockedTiles.has(`${j},${i}`);
     }
 

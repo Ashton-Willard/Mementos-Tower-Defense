@@ -6,14 +6,18 @@ import UIScene from "./scenes/UIScene.js";
 const config = {
     type: Phaser.AUTO,
     parent: 'game-container',
+    width: 1280,
+    height: 720,
     scale: {
-        mode: Phaser.Scale.RESIZE,
+        mode: Phaser.Scale.FIT,       // Fill screen, keep aspect ratio
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
+
     physics: {
         default: 'arcade',
         arcade: { debug: false }
     },
+
     scene: [
         TitleScreen,
         MainScene,
