@@ -2,7 +2,9 @@ import HealthBar from "./HealthBar.js";
 
 export default class Enemy extends Phaser.GameObjects.Image {
     constructor(scene) {
-        super(scene, 0, 0, 'enemy');
+
+        // Use the placeholder texture you loaded in preload()
+        super(scene, 0, 0, 'enemy_shadow');   // <-- CHANGE IS HERE
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -23,10 +25,12 @@ this.burnStartTime = 0;
         this.follower = { t: 0, vec: new Phaser.Math.Vector2() };
 
         this.healthbar = new HealthBar(scene, this);
-        this.body.setAllowGravity(false);
-        this.body.setImmovable(true);
-        this.body.setSize(this.width * 0.8, this.height * 0.8);
-        this.body.setOffset(this.width * 0.1, this.height * 0.1);
+
+        // Reward for defeating enemy
+        this.reward = 10;
+
+        // How much damage enemy does
+        this.leakDamage = 1;
     }
 
     startOnPath(path){
@@ -53,9 +57,44 @@ this.burnStartTime = 0;
             this.healthbar.update();
         }
 
-        if(this.follower.t >= 1){
-            this.die();
+        if (this.follower.t >= 1) {
+
+        // Floating leak popup
+        const dmgText = this.scene.add.text(this.x, this.y, `-${this.leakDamage}`, {
+            fontSize: "20px",
+            color: "#ff0000"
+        });
+        this.scene.tweens.add({
+            targets: dmgText,
+            y: this.y - 30,
+            alpha: 0,
+            duration: 600,
+            onComplete: () => dmgText.destroy()
+        });
+
+        // Lose lives
+        if (this.scene.loseLives) {
+            this.scene.loseLives(this.leakDamage);
         }
+
+        this.healthbar.destroy();
+        this.setActive(false);
+        this.setVisible(false);
+        this.body.enable = false;
+        this.die(false);
+    }
+
+        // const dmgText = this.scene.add.text(this.x, this.y, `-${this.leakDamage}`,{
+        //     fontSize: "16px",
+        //     color: "#ff0000",
+        // });
+        // this.scene.tweens.add({
+        //     targets: dmgText,
+        //     y: this.y - 30,
+        //     alpha: 0,
+        //     duration: 600,
+        //     onComplete: ()=> dmgText.destroy()
+        // });
     }
 
     receiveDamage(amount){
@@ -70,7 +109,24 @@ this.burnStartTime = 0;
         // 🧹 Destroy health bar
         if (this.healthbar) {
             this.healthbar.destroy();
-            this.healthbar = null;
+            this.die(true);
+        }
+    }
+
+    die(giveGold = true) {
+        this.setActive(false);
+        this.setVisible(false);
+        this.body.enable = false;
+
+        // Award for defeating enemy
+        if(this.scene.addGold && giveGold){
+            this.scene.addGold(this.reward);
+        }
+
+        
+        this.healthbar.destroy();
+        if(this.onDeath) {
+            this.onDeath();
         }
 
         // 💀 Disable enemy
