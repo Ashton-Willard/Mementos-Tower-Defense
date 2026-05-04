@@ -1,0 +1,20 @@
+import Enemy from './Enemy.js';
+
+export default class ShadeRunner extends Enemy {
+    constructor(scene) {
+        super(scene);
+
+        this.setTexture('shade_runner');
+
+        this.speed = 0.00003 * 1.4;
+        this.maxHp = 130;
+        this.hp = 130;
+
+        this.reward = 7;
+        this.leakDamage = 2;
+
+        this.setAlpha(0.7); // visual stealth
+
+        this.healthbar.update();
+    }
+}
