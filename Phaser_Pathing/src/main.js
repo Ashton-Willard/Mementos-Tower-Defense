@@ -4,8 +4,8 @@ import UIScene from "./scenes/UIScene.js";
 const config = {
     type: Phaser.AUTO,
     parent: 'content',
-    width: 1537,
-    height: 950,
+    width: 1800,
+    height: 1000,
     physics: {
         default: 'arcade',
         arcade: { debug: false }
