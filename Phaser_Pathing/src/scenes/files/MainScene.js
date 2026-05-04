@@ -19,44 +19,38 @@ export default class MainScene extends Phaser.Scene {
     }
 
     create() {
-        const CAM_W      = this.cameras.main.width;
-        const CAM_H      = this.cameras.main.height;
-        const SIDEBAR_W  = 200;
-        const GAME_W     = CAM_W - SIDEBAR_W;
-        const sidebarX   = GAME_W;
-        const GRID_SIZE  = 64;
-        const GHOST_SIZE = 52;
+        const CAM_W     = this.cameras.main.width;
+        const CAM_H     = this.cameras.main.height;
+        const CELL      = 90;
+        const COLS      = 2;
+        const SIDEBAR_W = CELL * COLS;  // 180
+        const GAME_W    = CAM_W - SIDEBAR_W;
+        const sidebarX  = GAME_W;
+        const GRID_SIZE = 64;
+        const GHOST_SIZE = 52; // drag ghost display size
 
-        // ── BACKGROUND — cover fill, no black bars ───────────────────
-        const bg      = this.add.image(0, 0, 'faceMap').setOrigin(0, 0);
-        const bgScale = Math.max(GAME_W / bg.width, CAM_H / bg.height);
-        bg.setScale(bgScale);
-        const bgOffX = (GAME_W - bg.displayWidth)  / 2;
-        const bgOffY = (CAM_H  - bg.displayHeight) / 2;
-        bg.setPosition(bgOffX, bgOffY);
+        // ── BACKGROUND ───────────────────────────────────────────────
+        this.add.rectangle(0, 0, GAME_W, CAM_H, 0x111111).setOrigin(0, 0);
 
-        // ── PATH COORDINATE HELPER ───────────────────────────────────
-        // Maps source-image pixel coords to screen coords.
-        // Call this AFTER bg scale/position is set.
-        // Usage: p(imgX, imgY) → [screenX, screenY]
-        const p = (ix, iy) => [bgOffX + ix * bgScale, bgOffY + iy * bgScale];
+        const bg    = this.add.image(0, 0, 'faceMap').setOrigin(0, 0);
+        const scale = Math.min(GAME_W / bg.width, CAM_H / bg.height);
+        bg.setScale(scale).setPosition(
+            (GAME_W - bg.displayWidth)  / 2,
+            (CAM_H  - bg.displayHeight) / 2
+        );
 
         // ── HUD ──────────────────────────────────────────────────────
         this.money = 500;
 
-        this.moneyText = this.add.text(16, 54, `💰 $${this.money}`, {
-            fontSize: '18px', fontFamily: 'monospace',
-            color: '#f0c040', stroke: '#000000', strokeThickness: 4
+        this.moneyText = this.add.text(20, 60, `Money: $${this.money}`, {
+            fontSize: '20px', color: '#00ff00'
         }).setScrollFactor(0).setDepth(9999);
 
-        this.startButton = this.add.text(16, 16, '▶  Start Wave', {
-            fontSize: '18px', fontFamily: 'monospace',
-            color: '#ffffff', stroke: '#000000', strokeThickness: 5,
-            backgroundColor: '#1a1a2e', padding: { x: 12, y: 6 }
+        this.startButton = this.add.text(20, 20, 'Start Wave', {
+            fontSize: '24px', color: '#ffffff',
+            backgroundColor: '#000000', padding: { x: 10, y: 5 }
         })
         .setInteractive()
-        .on('pointerover', function() { this.setStyle({ color: '#4ecca3' }); })
-        .on('pointerout',  function() { this.setStyle({ color: '#ffffff' }); })
         .on('pointerdown', () => this.startNextRound())
         .setDepth(9999).setScrollFactor(0);
 
@@ -69,85 +63,28 @@ export default class MainScene extends Phaser.Scene {
         this.physics.add.overlap(this.enemies, this.bullets,     this.damageEnemy, null, this);
         this.physics.add.overlap(this.enemies, this.fireBullets, this.damageEnemy, null, this);
 
-        // ── PATH ─────────────────────────────────────────────────────
-        //
-        // All coords are in SOURCE IMAGE space (before scale/offset).
-        // bg.width × bg.height is the source resolution.
-        // The p() helper converts them to screen pixels at runtime.
-        //
-        // Route: LEFT nostril → up inner left → out to stone border left
-        //        → up to top of stone border → across top → down stone right
-        //        → in to inner right → down to RIGHT nostril
-        //
-        // Stone border channel on this map runs roughly:
-        //   outer left x  ≈ 4% of image width
-        //   outer right x ≈ 96% of image width
-        //   top y         ≈ 4% of image height
-        //   nostrils y    ≈ 58% of image height
-        //   inner face left x  ≈ 38% of image width
-        //   inner face right x ≈ 58% of image width
-        //
-        // Using bg.width / bg.height so these work at any source resolution.
-        const W = bg.width;
-        const H = bg.height;
-
-        // Key landmarks as % of source image
-        const NL_X  = W * 0.40;   // left nostril x
-        const NR_X  = W * 0.56;   // right nostril x
-        const NOSE_Y = H * 0.58;  // nostril y (entry/exit)
-
-        const IL_X  = W * 0.38;   // inner face left (brow level)
-        const IR_X  = W * 0.58;   // inner face right (brow level)
-        const BROW_Y = H * 0.26;  // eyebrow / inner-turn y
-
-        const OL_X  = W * 0.04;   // outer stone left x
-        const OR_X  = W * 0.96;   // outer stone right x
-        const TURN_Y = H * 0.26;  // same row as brow turn
-
-        const TOP_Y  = H * 0.02;  // top of stone border
-
-        // Build flat [x,y, x,y, ...] array using p() helper
-        const rawPts = [
-            p(NL_X,  NOSE_Y),   // LEFT nostril — entry
-            p(NL_X,  BROW_Y),   // up left inner to brow level
-            p(IL_X,  BROW_Y),   // step left to inner-face edge
-            p(OL_X,  TURN_Y),   // sweep out to left stone wall
-            p(OL_X,  TOP_Y),    // up left stone wall to top
-            p(OR_X,  TOP_Y),    // across top of head
-            p(OR_X,  TURN_Y),   // down right stone wall to turn level
-            p(IR_X,  BROW_Y),   // sweep in to inner-face right
-            p(NR_X,  BROW_Y),   // step right to right inner
-            p(NR_X,  NOSE_Y),   // RIGHT nostril — exit
-        ];
-
-        // Flatten [[x,y],...] → [x,y,x,y,...] and pin each corner
-        // by duplicating it (keeps spline sharp at turns)
-        this.pathPoints = [];
-        rawPts.forEach(([x, y]) => {
-            this.pathPoints.push(x, y, x, y);
-        });
-
+        // ── PATH EDITOR ──────────────────────────────────────────────
+        this.pathPoints   = [];
         this.pathGraphics = this.add.graphics();
         this.path         = this.add.path();
-        this.path.splineTo(this.pathPoints);
-        this.drawPath();
 
-        // ── SIDEBAR — seamless gradient blend ────────────────────────
-        const fadeW = 60;
-        const grad  = this.add.graphics().setScrollFactor(0).setDepth(9997);
-        for (let i = 0; i < fadeW; i++) {
-            grad.fillStyle(0x0d0d1a, i / fadeW);
-            grad.fillRect(sidebarX - fadeW + i, 0, 1, CAM_H);
-        }
-        this.add.rectangle(sidebarX, 0, SIDEBAR_W, CAM_H, 0x0d0d1a)
-            .setOrigin(0, 0).setScrollFactor(0).setDepth(9997);
-        this.add.rectangle(sidebarX, 0, 2, CAM_H, 0x4ecca3, 0.4)
+        this.input.keyboard.on('keydown-C', () => {
+            this.pathPoints = [];
+            this.pathGraphics.clear();
+            this.path = this.add.path();
+        });
+
+        // ── SIDEBAR ──────────────────────────────────────────────────
+        this.add.rectangle(sidebarX, 0, SIDEBAR_W, CAM_H, 0x1e1e2e)
             .setOrigin(0, 0).setScrollFactor(0).setDepth(9998);
 
-        this.add.text(sidebarX + SIDEBAR_W / 2, 12, 'TOWERS', {
-            fontSize: '12px', fontFamily: 'monospace',
+        this.add.text(sidebarX + SIDEBAR_W / 2, 10, 'TOWERS', {
+            fontSize: '13px', fontFamily: 'monospace',
             color: '#4ecca3', fontStyle: 'bold'
         }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9999);
+
+        this.add.rectangle(sidebarX + 8, 30, SIDEBAR_W - 16, 1, 0x4ecca3, 0.5)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(9999);
 
         // ── TOWER DATA ───────────────────────────────────────────────
         this.towerData = {
@@ -161,12 +98,11 @@ export default class MainScene extends Phaser.Scene {
             windtower:      { cost: 155, bulletType: 'bullet',     label: 'Wind'      }
         };
 
-        // ── SIDEBAR GRID ─────────────────────────────────────────────
-        const COLS      = 2;
-        const CELL      = Math.floor(SIDEBAR_W / COLS);
-        const ICON_SIZE = 44;
-        const GRID_TOP  = 36;
+        // ── 2×4 SIDEBAR GRID ─────────────────────────────────────────
+        const GRID_TOP  = 38;
+        const ICON_SIZE = 52;
 
+        // Store icon refs so we can do hit-testing on pointerdown
         this._sidebarIcons = [];
 
         Object.keys(this.towerData).forEach((type, index) => {
@@ -174,54 +110,62 @@ export default class MainScene extends Phaser.Scene {
             const col   = index % COLS;
             const row   = Math.floor(index / COLS);
             const cellX = sidebarX + col * CELL;
-            const cellY = GRID_TOP  + row * (CELL + 10);
+            const cellY = GRID_TOP  + row * CELL;
             const iconX = cellX + CELL / 2;
-            const iconY = cellY + 6 + ICON_SIZE / 2;
+            const iconY = cellY + 8 + ICON_SIZE / 2;
 
-            const cellBg = this.add.rectangle(cellX + 2, cellY + 2, CELL - 4, CELL - 4, 0x1a1a2e)
+            this.add.rectangle(cellX + 1, cellY + 1, CELL - 2, CELL - 2, 0x2a2a3e)
                 .setOrigin(0, 0).setScrollFactor(0).setDepth(9998)
-                .setStrokeStyle(1, 0x2a2a4e);
+                .setStrokeStyle(1, 0x3a3a5e);
 
             const frame     = this.textures.get('turret').get(type);
             const iconScale = Math.min(ICON_SIZE / frame.realWidth, ICON_SIZE / frame.realHeight);
 
             const icon = this.add.image(iconX, iconY, 'turret', type)
-                .setScale(iconScale).setScrollFactor(0).setDepth(9999).setInteractive();
+                .setScale(iconScale)
+                .setScrollFactor(0)
+                .setDepth(9999)
+                .setInteractive();
 
-            this.add.text(iconX, iconY + ICON_SIZE / 2 + 2, data.label, {
-                fontSize: '8px', fontFamily: 'monospace', color: '#8888aa'
+            this.add.text(iconX, cellY + 8 + ICON_SIZE + 2, data.label, {
+                fontSize: '9px', fontFamily: 'monospace', color: '#aaaaaa'
             }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9999);
 
-            this.add.text(iconX, iconY + ICON_SIZE / 2 + 12, `$${data.cost}`, {
-                fontSize: '10px', fontFamily: 'monospace', color: '#f0c040', fontStyle: 'bold'
+            this.add.text(iconX, cellY + 8 + ICON_SIZE + 14, `$${data.cost}`, {
+                fontSize: '11px', fontFamily: 'monospace', color: '#f0c040', fontStyle: 'bold'
             }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9999);
 
-            icon.on('pointerover', () => { icon.setTint(0xaaddff); cellBg.setFillStyle(0x2a2a4e); });
-            icon.on('pointerout',  () => { icon.clearTint();        cellBg.setFillStyle(0x1a1a2e); });
+            icon.on('pointerover', () => icon.setTint(0xaaddff));
+            icon.on('pointerout',  () => icon.clearTint());
 
             icon.towerType = type;
             this._sidebarIcons.push(icon);
         });
 
-        // ── DRAG SYSTEM ──────────────────────────────────────────────
+        // ── DRAG SYSTEM (raw pointer — no Phaser drag API) ───────────
+        // _drag holds state while a tower is being placed
         this._drag = null;
 
         this.input.on('pointerdown', (pointer, targets) => {
+            // Pick up a tower if a sidebar icon was hit
             const icon = targets.find(t => t.towerType);
             if (!icon) return;
 
             const type = icon.towerType;
             const data = this.towerData[type];
-            if (this.money < data.cost) return;
+            if (this.money < data.cost) return; // can't afford — no ghost
 
             const frame      = this.textures.get('turret').get(type);
             const ghostScale = Math.min(GHOST_SIZE / frame.realWidth, GHOST_SIZE / frame.realHeight);
 
+            // Snap immediately to the grid cell under the pointer
             const sx = Math.round(pointer.x / GRID_SIZE) * GRID_SIZE;
             const sy = Math.round(pointer.y / GRID_SIZE) * GRID_SIZE;
 
             const ghost = this.add.image(sx, sy, 'turret', type)
-                .setScale(ghostScale).setAlpha(0.8).setDepth(10000);
+                .setScale(ghostScale)
+                .setAlpha(0.8)
+                .setDepth(10000);
 
             this._drag = { type, data, ghost };
         });
@@ -231,14 +175,17 @@ export default class MainScene extends Phaser.Scene {
             const { ghost, data } = this._drag;
 
             if (pointer.x < sidebarX) {
+                // Over game area — snap to grid
                 const sx = Math.round(pointer.x / GRID_SIZE) * GRID_SIZE;
                 const sy = Math.round(pointer.y / GRID_SIZE) * GRID_SIZE;
                 ghost.setPosition(sx, sy);
-                const i  = Math.floor(pointer.y / GRID_SIZE);
-                const j  = Math.floor(pointer.x / GRID_SIZE);
+
+                const i = Math.floor(pointer.y / GRID_SIZE);
+                const j = Math.floor(pointer.x / GRID_SIZE);
                 const ok = this.canPlaceTurret(i, j) && this.money >= data.cost;
                 ghost.setTint(ok ? 0xffffff : 0xff4444).setAlpha(ok ? 0.85 : 0.5);
             } else {
+                // Over sidebar — float freely, always red
                 ghost.setPosition(pointer.x, pointer.y).setTint(0xff4444).setAlpha(0.5);
             }
         });
@@ -258,8 +205,9 @@ export default class MainScene extends Phaser.Scene {
                     turret.bulletType = data.bulletType;
 
                     this.money -= data.cost;
-                    this.moneyText.setText(`💰 $${this.money}`);
+                    this.moneyText.setText(`Money: $${this.money}`);
 
+                    // Pop-in animation
                     this.tweens.add({
                         targets: turret,
                         scaleX: turret.scaleX * 1.35,
@@ -271,6 +219,17 @@ export default class MainScene extends Phaser.Scene {
 
             ghost.destroy();
             this._drag = null;
+        });
+
+        // ── PATH CLICKS ──────────────────────────────────────────────
+        this.input.on('pointerdown', (pointer, targets) => {
+            if (this._drag) return;
+            if (pointer.x >= sidebarX) return;
+            if (targets.length > 0) return;
+
+            this.pathPoints.push(pointer.x, pointer.y);
+            this.add.circle(pointer.x, pointer.y, 6, 0xff0000).setDepth(9999);
+            this.drawPath();
         });
 
         // ── UPGRADE UI ───────────────────────────────────────────────
@@ -286,30 +245,26 @@ export default class MainScene extends Phaser.Scene {
         this.pathGraphics.clear();
         if (this.pathPoints.length < 4) return;
 
-        this.pathGraphics.lineStyle(68, 0x000000, 0.45);
-        this.path.draw(this.pathGraphics);
+        this.path = this.add.path();
+        this.path.splineTo(this.pathPoints);
 
-        this.pathGraphics.lineStyle(52, 0x7a4f28, 1);
+        this.pathGraphics.lineStyle(60, 0x8b5a2b, 1);
         this.path.draw(this.pathGraphics);
-
-        this.pathGraphics.lineStyle(30, 0x9b6535, 0.8);
-        this.path.draw(this.pathGraphics);
-
-        this.pathGraphics.lineStyle(10, 0xc8894a, 0.5);
+        this.pathGraphics.lineStyle(70, 0x000000, 0.2);
         this.path.draw(this.pathGraphics);
     }
 
     isNearPath(x, y) {
         if (!this.path) return false;
-        return this.path.getPoints(300).some(p =>
-            Phaser.Math.Distance.Between(x, y, p.x, p.y) < 48
+        return this.path.getPoints(100).some(p =>
+            Phaser.Math.Distance.Between(x, y, p.x, p.y) < 60
         );
     }
 
     canPlaceTurret(i, j) {
         const x = j * 64 + 32;
         const y = i * 64 + 32;
-        if (x + 32 > this.cameras.main.width - 200) return false;
+        if (x + 32 > this.cameras.main.width - 180) return false;
         if (this.isNearPath(x, y)) return false;
         return true;
     }
