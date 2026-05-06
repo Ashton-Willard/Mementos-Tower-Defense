@@ -2,9 +2,7 @@ import HealthBar from "./HealthBar.js";
 
 export default class Enemy extends Phaser.GameObjects.Image {
     constructor(scene) {
-
-        // Use the placeholder texture you loaded in preload()
-        super(scene, 0, 0, 'enemy_shadow');   // <-- CHANGE IS HERE
+        super(scene, 0, 0, 'enemy');
 
         scene.add.existing(this);
         scene.physics.add.existing(this);

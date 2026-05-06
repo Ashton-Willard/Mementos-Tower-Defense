@@ -14,15 +14,15 @@ const TOWER_STATS = {
 const UPGRADE_PATHS = {
     lightningtower: {
         damage: { label: '⚡ Chain Strike', costs: [75, 200],
-            apply: (t, lvl) => { t.damage += 8 * lvl; t.setTint(lvl === 1 ? 0xffee44 : 0xffaa00); } },
+            apply: (t, lvl) => { t.damage += 8 * lvl; } },
         speed:  { label: '⚡ Overclock',    costs: [100, 250],
-            apply: (t, lvl) => { t.fireRate = Math.max(50, t.fireRate - 60 * lvl); t.setTint(lvl === 1 ? 0x88ffff : 0x00ccff); } },
+            apply: (t, lvl) => { t.fireRate = Math.max(50, t.fireRate - 60 * lvl); } },
         range:  { label: '📡 Broadcast',   costs: [60, 175],
             apply: (t, lvl) => { t.range += 200 * lvl; } }
     },
     firetower: {
         damage: { label: '🔥 Inferno',    costs: [80, 220],
-            apply: (t, lvl) => { t.damage += 12 * lvl; t.setTint(lvl === 1 ? 0xff6600 : 0xff2200); } },
+            apply: (t, lvl) => { t.damage += 12 * lvl; } },
         speed:  { label: '🔥 Rapid Burn', costs: [90, 200],
             apply: (t, lvl) => { t.fireRate = Math.max(100, t.fireRate - 100 * lvl); } },
         range:  { label: '🔥 Spread',     costs: [70, 180],
@@ -30,7 +30,7 @@ const UPGRADE_PATHS = {
     },
     icetower: {
         damage: { label: '❄ Frostbite',    costs: [60, 160],
-            apply: (t, lvl) => { t.damage += 6 * lvl; t.setTint(lvl === 1 ? 0xccddff : 0x99ccff); } },
+            apply: (t, lvl) => { t.damage += 6 * lvl; } },
         speed:  { label: '❄ Blizzard',     costs: [80, 200],
             apply: (t, lvl) => { t.fireRate = Math.max(200, t.fireRate - 200 * lvl); } },
         range:  { label: '❄ Arctic Reach', costs: [70, 175],
@@ -46,7 +46,7 @@ const UPGRADE_PATHS = {
     },
     darktower: {
         damage: { label: '🌑 Shadow Bolt', costs: [85, 230],
-            apply: (t, lvl) => { t.damage += 10 * lvl; t.setTint(lvl === 1 ? 0x9944aa : 0x661177); } },
+            apply: (t, lvl) => { t.damage += 10 * lvl; } },
         speed:  { label: '🌑 Dark Pulse',  costs: [95, 240],
             apply: (t, lvl) => { t.fireRate = Math.max(150, t.fireRate - 80 * lvl); } },
         range:  { label: '🌑 Void Reach',  costs: [75, 190],
@@ -54,7 +54,7 @@ const UPGRADE_PATHS = {
     },
     lighttower: {
         damage: { label: '☀ Radiant Beam', costs: [90, 250],
-            apply: (t, lvl) => { t.damage += 9 * lvl; t.setTint(lvl === 1 ? 0xffff99 : 0xffff44); } },
+            apply: (t, lvl) => { t.damage += 9 * lvl; } },
         speed:  { label: '☀ Burst',        costs: [100, 260],
             apply: (t, lvl) => { t.fireRate = Math.max(100, t.fireRate - 70 * lvl); } },
         range:  { label: '☀ Brilliance',   costs: [80, 210],
@@ -62,7 +62,7 @@ const UPGRADE_PATHS = {
     },
     psychictower: {
         damage: { label: '🧠 Mind Crush',  costs: [88, 240],
-            apply: (t, lvl) => { t.damage += 11 * lvl; t.setTint(lvl === 1 ? 0xff88ff : 0xff44ff); } },
+            apply: (t, lvl) => { t.damage += 11 * lvl; } },
         speed:  { label: '🧠 Psyche Wave', costs: [98, 250],
             apply: (t, lvl) => { t.fireRate = Math.max(120, t.fireRate - 90 * lvl); } },
         range:  { label: '🧠 Mental Link', costs: [82, 215],
@@ -70,7 +70,7 @@ const UPGRADE_PATHS = {
     },
     windtower: {
         damage: { label: '💨 Gust Strike', costs: [82, 220],
-            apply: (t, lvl) => { t.damage += 8 * lvl; t.setTint(lvl === 1 ? 0xaaffff : 0x66ffff); } },
+            apply: (t, lvl) => { t.damage += 8 * lvl; } },
         speed:  { label: '💨 Tempest',     costs: [92, 245],
             apply: (t, lvl) => { t.fireRate = Math.max(140, t.fireRate - 75 * lvl); } },
         range:  { label: '💨 Whirlwind',   costs: [78, 205],
@@ -78,8 +78,7 @@ const UPGRADE_PATHS = {
     }
 };
 
-// Placed tower display size in pixels (fits inside a 64px grid cell)
-const PLACED_SIZE = 48;
+export { TOWER_STATS, UPGRADE_PATHS };
 
 export default class Turret extends Phaser.GameObjects.Sprite {
 
@@ -90,12 +89,15 @@ export default class Turret extends Phaser.GameObjects.Sprite {
         this.scene = scene;
         this.type  = type;
 
-        // Scale so the sprite fills PLACED_SIZE px regardless of its raw dimensions
+        // Scale so the tower fits inside the map grid cell.
         const frame = scene.textures.get('turret').get(type);
+        const frameWidth = frame.sourceSize?.w || frame.frame?.width || frame.width || 1;
+        const frameHeight = frame.sourceSize?.h || frame.frame?.height || frame.height || 1;
+        const cellSize = Math.max(32, (scene.gridSize || 64) - 10);
         this.setScale(Math.min(
-            PLACED_SIZE / frame.realWidth,
-            PLACED_SIZE / frame.realHeight
-        ));
+            cellSize / frameWidth,
+            cellSize / frameHeight
+        ) * 1.1);
 
         const stats     = TOWER_STATS[type];
         this.range      = stats.range;
@@ -106,6 +108,8 @@ export default class Turret extends Phaser.GameObjects.Sprite {
 
         this.upgradePaths       = { damage: 0, speed: 0, range: 0 };
         this.upgradeDefinitions = UPGRADE_PATHS[type];
+        this.masterUpgraded     = false;
+        this.totalInvested      = 0;
 
         this.clearTint();
         this.setAlpha(1);
@@ -115,9 +119,29 @@ export default class Turret extends Phaser.GameObjects.Sprite {
     }
 
     place(row, col) {
-        const cellSize = 64;
+        const cellSize = this.scene.gridSize || 64;
         this.x = col * cellSize + cellSize / 2;
         this.y = row * cellSize + cellSize / 2;
+    }
+
+    addInvestment(amount) {
+        this.totalInvested = (this.totalInvested || 0) + amount;
+    }
+
+    getSellValue() {
+        return Math.floor((this.totalInvested || 0) * 0.5);
+    }
+
+    updateTexture(texture, frame) {
+        this.setTexture(texture, frame);
+        const frameData = this.scene.textures.get(texture).get(frame);
+        if (!frameData) return;
+
+        const frameWidth = frameData.sourceSize?.w || frameData.frame?.width || frameData.width || 1;
+        const frameHeight = frameData.sourceSize?.h || frameData.frame?.height || frameData.height || 1;
+        const cellSize = Math.max(32, (this.scene.gridSize || 64) - 10);
+        const scale = Math.min(cellSize / frameWidth, cellSize / frameHeight) * 1.1;
+        this.setScale(scale);
     }
 
     applyUpgrade(path) {

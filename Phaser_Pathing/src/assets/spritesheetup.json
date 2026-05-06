@@ -1,0 +1,172 @@
+{
+  "frames": {
+    "lightningtower": {
+      "frame": {
+        "x": 39,
+        "y": 103,
+        "w": 88,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 88,
+        "h": 124
+      },
+      "sourceSize": {
+        "w": 88,
+        "h": 124
+      }
+    },
+    "icetower": {
+      "frame": {
+        "x": 182,
+        "y": 103,
+        "w": 80,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 80,
+        "h": 124
+      },
+      "sourceSize": {
+        "w": 80,
+        "h": 124
+      }
+    },
+    "firetower": {
+      "frame": {
+        "x": 304,
+        "y": 103,
+        "w": 80,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 80,
+        "h": 124
+      },
+      "sourceSize": {
+        "w": 80,
+        "h": 124
+      }
+    },
+    "rocktower": {
+      "frame": {
+        "x": 413,
+        "y": 103,
+        "w": 106,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 106,
+        "h": 124
+      },
+      "sourceSize": {
+        "w": 106,
+        "h": 124
+      }
+    },
+    "darktower": {
+      "frame": {
+        "x": 553,
+        "y": 103,
+        "w": 91,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 91,
+        "h": 124
+      },
+      "sourceSize": {
+        "w": 91,
+        "h": 124
+      }
+    },
+    "lighttower": {
+      "frame": {
+        "x": 678,
+        "y": 103,
+        "w": 89,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 89,
+        "h": 124
+      },
+      "sourceSize": {
+        "w": 89,
+        "h": 124
+      }
+    },
+    "psychictower": {
+      "frame": {
+        "x": 801,
+        "y": 103,
+        "w": 81,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 81,
+        "h": 124
+      },
+      "sourceSize": {
+        "w": 81,
+        "h": 124
+      }
+    },
+    "windtower": {
+      "frame": {
+        "x": 915,
+        "y": 103,
+        "w": 77,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 77,
+        "h": 124
+      },
+      "sourceSize": {
+        "w": 77,
+        "h": 124
+      }
+    }
+  },
+  "meta": {
+    "image": "spritesheetup.png",
+    "size": {
+      "w": 1024,
+      "h": 343
+    },
+    "scale": "1"
+  }
+}

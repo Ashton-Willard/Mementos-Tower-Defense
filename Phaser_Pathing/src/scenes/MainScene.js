@@ -13,7 +13,8 @@ export default class MainScene extends Phaser.Scene {
     preload() {
         this.load.image('bullet',     'src/assets/bullet.png');
         this.load.image('firebullet', 'src/assets/firebullet.png');
-        this.load.image('faceMap',    'src/assets/face_map.png');
+        this.load.image('tiles',      'src/assets/tiles.png');
+        this.load.tilemapTiledJSON('map1', 'src/assets/maps/map1.tmj');
         this.load.image('enemy',      'src/assets/enemy.png');
         this.load.atlas('turret', 'src/assets/spritesheet2.png', 'src/assets/spritesheet.json');
     }
@@ -24,22 +25,148 @@ export default class MainScene extends Phaser.Scene {
         const SIDEBAR_W  = 200;
         const GAME_W     = CAM_W - SIDEBAR_W;
         const sidebarX   = GAME_W;
-        const GRID_SIZE  = 64;
-        const GHOST_SIZE = 52;
+        const TILE_SIZE  = 32;
 
-        // ── BACKGROUND — cover fill, no black bars ───────────────────
-        const bg      = this.add.image(0, 0, 'faceMap').setOrigin(0, 0);
-        const bgScale = Math.max(GAME_W / bg.width, CAM_H / bg.height);
-        bg.setScale(bgScale);
-        const bgOffX = (GAME_W - bg.displayWidth)  / 2;
-        const bgOffY = (CAM_H  - bg.displayHeight) / 2;
-        bg.setPosition(bgOffX, bgOffY);
+        // ── TILEMAP BACKGROUND / PATH ─────────────────────────────────
+        const map = this.make.tilemap({ key: 'map1' });
+        const tileset = map.addTilesetImage('Testing_Tileset', 'tiles');
+        const baseLayer = map.createLayer('Tile Layer 1', tileset, 0, 0);
+        const pathLayer = map.createLayer('Pathing', tileset, 0, 0);
+        pathLayer.setVisible(true);
 
-        // ── PATH COORDINATE HELPER ───────────────────────────────────
-        // Maps source-image pixel coords to screen coords.
-        // Call this AFTER bg scale/position is set.
-        // Usage: p(imgX, imgY) → [screenX, screenY]
-        const p = (ix, iy) => [bgOffX + ix * bgScale, bgOffY + iy * bgScale];
+        const mapWidth   = map.widthInPixels;
+        const mapHeight  = map.heightInPixels;
+        const mapScale   = Math.min(GAME_W / mapWidth, CAM_H / mapHeight);
+        const mapOffsetX = Math.round((GAME_W - mapWidth * mapScale) / 2);
+        const mapOffsetY = Math.round((CAM_H - mapHeight * mapScale) / 2);
+
+        baseLayer.setScale(mapScale).setPosition(mapOffsetX, mapOffsetY);
+        pathLayer.setScale(mapScale).setPosition(mapOffsetX, mapOffsetY);
+
+        const worldFromTile = (tx, ty) => [
+            mapOffsetX + map.tileToWorldX(tx) * mapScale + (TILE_SIZE * mapScale) / 2,
+            mapOffsetY + map.tileToWorldY(ty) * mapScale + (TILE_SIZE * mapScale) / 2
+        ];
+
+        const PATH_TILE_INDEX = 48;
+        const pathTiles = [];
+        pathLayer.forEachTile(tile => {
+            if (tile.index === PATH_TILE_INDEX) pathTiles.push(tile);
+        });
+
+        const tileKey = tile => `${tile.x},${tile.y}`;
+        const pathTileByKey = new Map(pathTiles.map(tile => [tileKey(tile), tile]));
+        const neighborOffsets = [
+            { dx:  0, dy:  1 },
+            { dx: -1, dy:  0 },
+            { dx:  1, dy:  0 },
+            { dx:  0, dy: -1 }
+        ];
+
+        const getNeighbors = tile => neighborOffsets
+            .map(({ dx, dy }) => pathTileByKey.get(`${tile.x + dx},${tile.y + dy}`))
+            .filter(Boolean);
+
+        const rows = new Map();
+        pathTiles.forEach(tile => {
+            const xs = rows.get(tile.y) || [];
+            xs.push(tile.x);
+            rows.set(tile.y, xs);
+        });
+
+        const sortedRows = [...rows.entries()].sort((a, b) => a[0] - b[0]);
+        const [topY, topXs] = sortedRows[0];
+        const [bottomY, bottomXs] = sortedRows[sortedRows.length - 1];
+        const topCenter = (Math.min(...topXs) + Math.max(...topXs)) / 2;
+        const bottomCenter = (Math.min(...bottomXs) + Math.max(...bottomXs)) / 2;
+
+        const pickRowTile = (xs, rowY, targetX) => {
+            let best = null;
+            let bestDist = Infinity;
+            xs.forEach(x => {
+                const dist = Math.abs(x - targetX);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = pathTileByKey.get(`${x},${rowY}`);
+                }
+            });
+            return best;
+        };
+
+        const startTile = pickRowTile(topXs, topY, topCenter);
+        const endTile = pickRowTile(bottomXs, bottomY, bottomCenter);
+        let orderedTiles = [];
+
+        if (startTile && endTile) {
+            const queue = [startTile];
+            const cameFrom = new Map();
+            cameFrom.set(tileKey(startTile), null);
+            let foundEnd = false;
+
+            while (queue.length && !foundEnd) {
+                const current = queue.shift();
+                if (current === endTile) {
+                    foundEnd = true;
+                    break;
+                }
+
+                for (const neighbor of getNeighbors(current)) {
+                    const key = tileKey(neighbor);
+                    if (cameFrom.has(key)) continue;
+                    cameFrom.set(key, current);
+                    queue.push(neighbor);
+                }
+            }
+
+            if (foundEnd) {
+                let cursor = endTile;
+                while (cursor) {
+                    orderedTiles.push(cursor);
+                    cursor = cameFrom.get(tileKey(cursor));
+                }
+                orderedTiles.reverse();
+            }
+        }
+
+        if (orderedTiles.length < 2) {
+            console.warn('Path generation falling back to row-center path for broad path region');
+            const rows = new Map();
+            pathTiles.forEach(tile => {
+                const xs = rows.get(tile.y) || [];
+                xs.push(tile.x);
+                rows.set(tile.y, xs);
+            });
+
+            const sortedRows = [...rows.entries()].sort((a, b) => a[0] - b[0]);
+            this.pathPoints = sortedRows.map(([y, xs]) => {
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
+                const centerX = (minX + maxX) / 2;
+                return worldFromTile(centerX, y);
+            }).flat();
+        } else {
+            this.pathPoints = orderedTiles.map(tile => worldFromTile(tile.x, tile.y)).flat();
+        }
+        this.pathGraphics = this.add.graphics();
+
+        if (this.pathPoints.length >= 2) {
+            const firstPoint = this.pathPoints.slice(0, 2);
+            this.path = this.add.path(firstPoint[0], firstPoint[1]);
+            for (let i = 2; i < this.pathPoints.length; i += 2) {
+                this.path.lineTo(this.pathPoints[i], this.pathPoints[i + 1]);
+            }
+            this.drawPath();
+        } else {
+            this.path = this.add.path(0, 0);
+            console.warn('Path generation failed: not enough path points');
+        }
+
+        const GRID_SIZE = TILE_SIZE * mapScale;
+        const GHOST_SIZE = 48 * mapScale;
+        this.gridSize = GRID_SIZE;
+
+        // ── HUD ─────────────────────────────────────────────────────
+
 
         // ── HUD ──────────────────────────────────────────────────────
         this.money = 500;
@@ -68,69 +195,6 @@ export default class MainScene extends Phaser.Scene {
 
         this.physics.add.overlap(this.enemies, this.bullets,     this.damageEnemy, null, this);
         this.physics.add.overlap(this.enemies, this.fireBullets, this.damageEnemy, null, this);
-
-        // ── PATH ─────────────────────────────────────────────────────
-        //
-        // All coords are in SOURCE IMAGE space (before scale/offset).
-        // bg.width × bg.height is the source resolution.
-        // The p() helper converts them to screen pixels at runtime.
-        //
-        // Route: LEFT nostril → up inner left → out to stone border left
-        //        → up to top of stone border → across top → down stone right
-        //        → in to inner right → down to RIGHT nostril
-        //
-        // Stone border channel on this map runs roughly:
-        //   outer left x  ≈ 4% of image width
-        //   outer right x ≈ 96% of image width
-        //   top y         ≈ 4% of image height
-        //   nostrils y    ≈ 58% of image height
-        //   inner face left x  ≈ 38% of image width
-        //   inner face right x ≈ 58% of image width
-        //
-        // Using bg.width / bg.height so these work at any source resolution.
-        const W = bg.width;
-        const H = bg.height;
-
-        // Key landmarks as % of source image
-        const NL_X  = W * 0.40;   // left nostril x
-        const NR_X  = W * 0.56;   // right nostril x
-        const NOSE_Y = H * 0.58;  // nostril y (entry/exit)
-
-        const IL_X  = W * 0.38;   // inner face left (brow level)
-        const IR_X  = W * 0.58;   // inner face right (brow level)
-        const BROW_Y = H * 0.26;  // eyebrow / inner-turn y
-
-        const OL_X  = W * 0.04;   // outer stone left x
-        const OR_X  = W * 0.96;   // outer stone right x
-        const TURN_Y = H * 0.26;  // same row as brow turn
-
-        const TOP_Y  = H * 0.02;  // top of stone border
-
-        // Build flat [x,y, x,y, ...] array using p() helper
-        const rawPts = [
-            p(NL_X,  NOSE_Y),   // LEFT nostril — entry
-            p(NL_X,  BROW_Y),   // up left inner to brow level
-            p(IL_X,  BROW_Y),   // step left to inner-face edge
-            p(OL_X,  TURN_Y),   // sweep out to left stone wall
-            p(OL_X,  TOP_Y),    // up left stone wall to top
-            p(OR_X,  TOP_Y),    // across top of head
-            p(OR_X,  TURN_Y),   // down right stone wall to turn level
-            p(IR_X,  BROW_Y),   // sweep in to inner-face right
-            p(NR_X,  BROW_Y),   // step right to right inner
-            p(NR_X,  NOSE_Y),   // RIGHT nostril — exit
-        ];
-
-        // Flatten [[x,y],...] → [x,y,x,y,...] and pin each corner
-        // by duplicating it (keeps spline sharp at turns)
-        this.pathPoints = [];
-        rawPts.forEach(([x, y]) => {
-            this.pathPoints.push(x, y, x, y);
-        });
-
-        this.pathGraphics = this.add.graphics();
-        this.path         = this.add.path();
-        this.path.splineTo(this.pathPoints);
-        this.drawPath();
 
         // ── SIDEBAR — seamless gradient blend ────────────────────────
         const fadeW = 60;
@@ -253,6 +317,7 @@ export default class MainScene extends Phaser.Scene {
 
                 if (this.canPlaceTurret(i, j) && this.money >= data.cost) {
                     const turret = new Turret(this, type);
+                    turret.addInvestment(data.cost);
                     this.turrets.add(turret);
                     turret.place(i, j);
                     turret.bulletType = data.bulletType;
@@ -307,16 +372,25 @@ export default class MainScene extends Phaser.Scene {
     }
 
     canPlaceTurret(i, j) {
-        const x = j * 64 + 32;
-        const y = i * 64 + 32;
-        if (x + 32 > this.cameras.main.width - 200) return false;
+        const grid = this.gridSize || 64;
+        const x = j * grid + grid / 2;
+        const y = i * grid + grid / 2;
+        if (x + grid / 2 > this.cameras.main.width - 200) return false;
         if (this.isNearPath(x, y)) return false;
         return true;
     }
 
+    addGold(amount) {
+        this.money += amount;
+        if (this.moneyText) {
+            this.moneyText.setText(`💰 $${this.money}`);
+            this.moneyText.setAlpha(1);
+        }
+    }
+
     startNextRound() {
         this.startButton.setVisible(false);
-        this.waveManager.startWave();
+        this.waveManager.startNextWave();
     }
 
     update(time, delta) {

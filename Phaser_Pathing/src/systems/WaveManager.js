@@ -58,8 +58,26 @@ export default class WaveManager {
                     { delay: 2000, type: 'fast',  count: 20, rate: 250 }
                 ]
             },
-
-            // Add more waves here...
+            {
+                pattern: [
+                    { delay: 0,    type: 'basic', count: 20, rate: 250 },
+                    { delay: 1500, type: 'fast',  count: 25, rate: 220 }
+                ]
+            },
+            {
+                pattern: [
+                    { delay: 0,    type: 'basic', count: 25, rate: 220 },
+                    { delay: 1000, type: 'fast',  count: 20, rate: 180 },
+                    { delay: 4000, type: 'basic', count: 10, rate: 120 }
+                ]
+            },
+            {
+                pattern: [
+                    { delay: 0,    type: 'basic', count: 20, rate: 180 },
+                    { delay: 800,  type: 'fast',  count: 30, rate: 180 },
+                    { delay: 3000, type: 'basic', count: 15, rate: 120 }
+                ]
+            }
         ];
     }
 
@@ -98,6 +116,9 @@ export default class WaveManager {
         // Hide the button while the wave is running
         if (this.scene.roundButton) {
             this.scene.roundButton.setVisible(false);
+        }
+        if (this.scene.startButton) {
+            this.scene.startButton.setVisible(false);
         }
 
         console.log(`Starting wave ${this.currentWaveIndex + 1}`);
@@ -218,10 +239,12 @@ export default class WaveManager {
         this.scene.addGold(bonus);
 
         if (this.currentWaveIndex < this.waves.length - 1) {
-            this.scene.roundButton.setVisible(true);
+            if (this.scene.startButton) {
+                this.scene.startButton.setVisible(true);
+                this.scene.startButton.setAlpha(1);
+            }
         } else {
             console.log('Last wave finished');
-            
         }
     }
 }

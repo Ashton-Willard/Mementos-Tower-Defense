@@ -18,7 +18,7 @@ export default class TowerUpgradeUI {
 
     _buildPanel() {
         const scene = this.scene;
-        const W = 300, H = 420;
+        const W = 300, H = 500;
 
         this.bg = scene.add.rectangle(0, 0, W, H, 0x1a1a2e, 0.97)
             .setStrokeStyle(2, 0x4ecca3)
@@ -81,6 +81,52 @@ export default class TowerUpgradeUI {
             this.buttons[key] = { btn, btnLabel, pips, cost, preview, description };
         });
 
+        // Master upgrade button (only shown when all other upgrades are maxed)
+        const masterBtn = scene.add.rectangle(W / 2, 380, 260, 60, 0xffd700, 0.2)
+            .setStrokeStyle(1, 0xffd700)
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerdown', () => this._masterUpgrade());
+
+        const masterDescription = scene.add.text(W + 20, 380, 'Ultimate enhancement\nfor maxed towers', {
+            fontSize: '11px', fontFamily: 'monospace', color: '#ffdd66'
+        }).setOrigin(0, 0.5).setVisible(false);
+
+        masterBtn.on('pointerover', () => {
+            masterBtn.setFillStyle(0xffd700, 0.45);
+            masterDescription.setVisible(true);
+        });
+        masterBtn.on('pointerout', () => {
+            masterBtn.setFillStyle(0xffd700, 0.2);
+            masterDescription.setVisible(false);
+        });
+
+        const masterLabel = scene.add.text(W / 2 - 80, 370, 'MASTER UPGRADE', {
+            fontSize: '14px', fontFamily: 'monospace', color: '#ffffff', fontStyle: 'bold'
+        }).setOrigin(0, 0.5);
+
+        const masterCost = scene.add.text(W / 2, 388, 'Cost: $500', {
+            fontSize: '12px', fontFamily: 'monospace', color: '#888888'
+        }).setOrigin(0.5);
+
+        this.buttons.master = { btn: masterBtn, btnLabel: masterLabel, cost: masterCost, description: masterDescription };
+
+        const sellBtn = scene.add.rectangle(W / 2, 460, 260, 50, 0xff5555, 0.2)
+            .setStrokeStyle(1, 0xff5555)
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerdown', () => this._sellTower());
+
+        const sellLabel = scene.add.text(W / 2 - 80, 460, 'SELL TOWER', {
+            fontSize: '14px', fontFamily: 'monospace', color: '#ffffff', fontStyle: 'bold'
+        }).setOrigin(0, 0.5);
+
+        const sellPrice = scene.add.text(W / 2, 470, 'Receive: $0', {
+            fontSize: '12px', fontFamily: 'monospace', color: '#ffbbbb'
+        }).setOrigin(0.5);
+
+        this.buttons.sell = { btn: sellBtn, btnLabel: sellLabel, cost: sellPrice };
+
         this.closeBtn = scene.add.text(W - 8, 4, '✕', {
             fontSize: '16px', fontFamily: 'monospace', color: '#666666'
         }).setOrigin(1, 0)
@@ -91,10 +137,66 @@ export default class TowerUpgradeUI {
 
         const allObjects = [
             this.bg, this.titleText, this.statsText, this.closeBtn,
-            ...Object.values(this.buttons).flatMap(b => [b.btn, b.btnLabel, b.pips, b.cost, b.preview, b.description])
+            ...Object.values(this.buttons).flatMap(b => [b.btn, b.btnLabel, b.pips, b.cost, b.preview, b.description].filter(Boolean))
         ];
 
         this.container = scene.add.container(0, 0, allObjects).setDepth(10000);
+    }
+
+    _masterUpgrade() {
+        if (!this.tower) return;
+
+        // Check if all upgrades are maxed
+        if (this.tower.upgradePaths.damage < 2 || this.tower.upgradePaths.speed < 2 || this.tower.upgradePaths.range < 2) {
+            return;
+        }
+
+        // Check if already master upgraded
+        if (this.tower.masterUpgraded) return;
+
+        const cost = 500;
+
+        if (this.scene.money < cost) {
+            // Flash money text red and restore alpha on complete
+            this.scene.tweens.add({
+                targets: this.scene.moneyText,
+                alpha: 0.2, yoyo: true, duration: 80, repeat: 2,
+                onComplete: () => this.scene.moneyText.setAlpha(1)
+            });
+            return;
+        }
+
+        this.scene.money -= cost;
+        this.scene.moneyText.setText(`Money: $${this.scene.money}`);
+        this.tower.addInvestment(cost);
+
+        // Apply master upgrade
+        this.tower.masterUpgraded = true;
+        this.tower.damage *= 1.5;
+        this.tower.fireRate = Math.max(50, this.tower.fireRate * 0.7);
+        this.tower.range *= 1.2;
+
+        // Change texture to upgraded version and keep the tower sized correctly
+        this.tower.updateTexture('turret_up', this.tower.type);
+
+        this.tower.addInvestment(cost);
+
+        this._refresh();
+    }
+
+    _sellTower() {
+        if (!this.tower) return;
+
+        const value = this.tower.getSellValue();
+        if (value > 0) {
+            this.scene.addGold(value);
+        }
+
+        if (this.tower.active) {
+            this.tower.destroy();
+        }
+
+        this.hide();
     }
 
     _upgrade(path) {
@@ -107,10 +209,11 @@ export default class TowerUpgradeUI {
         const cost = this.tower.upgradeDefinitions[path].costs[level];
 
         if (this.scene.money < cost) {
-            // Flash money text red
+            // Flash money text red and restore alpha on complete
             this.scene.tweens.add({
                 targets: this.scene.moneyText,
-                alpha: 0.2, yoyo: true, duration: 80, repeat: 2
+                alpha: 0.2, yoyo: true, duration: 80, repeat: 2,
+                onComplete: () => this.scene.moneyText.setAlpha(1)
             });
             return;
         }
@@ -212,6 +315,35 @@ export default class TowerUpgradeUI {
 
         // Update each button from tower's own upgrade definitions
         Object.entries(this.buttons).forEach(([key, { btn, btnLabel, pips, cost, preview }]) => {
+            if (key === 'master') {
+                // Handle master upgrade button separately
+                const allMaxed = t.upgradePaths.damage >= 2 && t.upgradePaths.speed >= 2 && t.upgradePaths.range >= 2;
+                const alreadyMaster = t.masterUpgraded;
+
+                if (allMaxed && !alreadyMaster) {
+                    btn.setVisible(true).setInteractive({ useHandCursor: true }).setAlpha(1);
+                    btnLabel.setVisible(true);
+                    cost.setText('Cost: $500').setVisible(true);
+                } else if (alreadyMaster) {
+                    btn.setVisible(true).setInteractive(false).setAlpha(0.35);
+                    btnLabel.setVisible(true);
+                    cost.setText('APPLIED').setVisible(true);
+                } else {
+                    btn.setVisible(false);
+                    btnLabel.setVisible(false);
+                    cost.setVisible(false);
+                }
+                return;
+            }
+
+            if (key === 'sell') {
+                const sellValue = t.getSellValue();
+                btn.setVisible(true).setInteractive({ useHandCursor: true }).setAlpha(1);
+                btnLabel.setVisible(true).setText('SELL TOWER');
+                cost.setText(`Receive: $${sellValue}`).setVisible(true);
+                return;
+            }
+
             const level  = t.upgradePaths[key];
             const def    = t.upgradeDefinitions[key];
 
@@ -235,7 +367,7 @@ export default class TowerUpgradeUI {
         this.visible = true;
 
         const cam = this.scene.cameras.main;
-        const W = 300, H = 420;
+        const W = 300, H = 500;
 
         let px = tower.x + 40;
         let py = tower.y - H / 2;

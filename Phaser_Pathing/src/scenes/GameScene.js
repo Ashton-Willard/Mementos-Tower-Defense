@@ -1,3 +1,5 @@
+import Turret, { UPGRADE_PATHS } from '../objects/Turret.js';
+
 export default class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
@@ -9,6 +11,8 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('tower_rock', 'src/assets/towers/tower_rock.png');
         this.load.image('enemy_showcase', 'src/assets/enemies/enemy_shadow.png');
         this.load.image('back_arrow', 'src/assets/ui/back_arrow_red.png');
+        this.load.atlas('turret', 'src/assets/spritesheet2.png', 'src/assets/spritesheet.json');
+        this.load.atlas('turret_up', 'src/assets/spritesheetup.png', 'src/assets/spritesheetup.json');
     }
 
     create() {
@@ -517,7 +521,7 @@ export default class GameScene extends Phaser.Scene {
         const upgradesHint = this.add.text(
             this.scale.width / 2,
             this.scale.height * 0.24,
-            'Unlock permanent bonuses for your runs',
+            'Review all tower upgrade paths',
             {
                 fontFamily: 'Arial',
                 fontSize: '26px',
@@ -525,107 +529,259 @@ export default class GameScene extends Phaser.Scene {
             }
         ).setOrigin(0.5);
 
-        const upgradesGraphics = this.add.graphics();
-        upgradesGraphics.lineStyle(4, 0xff0000, 0.6);
-
-        const nodePositions = [
-            { x: this.scale.width * 0.35, y: this.scale.height * 0.40, label: 'Damage I' },
-            { x: this.scale.width * 0.50, y: this.scale.height * 0.40, label: 'Damage II' },
-            { x: this.scale.width * 0.65, y: this.scale.height * 0.40, label: 'Damage III' },
-            { x: this.scale.width * 0.35, y: this.scale.height * 0.55, label: 'Range I' },
-            { x: this.scale.width * 0.50, y: this.scale.height * 0.55, label: 'Range II' },
-            { x: this.scale.width * 0.65, y: this.scale.height * 0.55, label: 'Range III' },
-            { x: this.scale.width * 0.35, y: this.scale.height * 0.70, label: 'Speed I' },
-            { x: this.scale.width * 0.50, y: this.scale.height * 0.70, label: 'Speed II' },
-            { x: this.scale.width * 0.65, y: this.scale.height * 0.70, label: 'Speed III' }
+        const towerInfo = [
+            { type: 'lightningtower', name: 'Lightning Tower', icon: 'lightningtower' },
+            { type: 'firetower',      name: 'Fire Tower',      icon: 'firetower' },
+            { type: 'icetower',       name: 'Ice Tower',       icon: 'icetower' },
+            { type: 'rocktower',      name: 'Rock Tower',      icon: 'rocktower' },
+            { type: 'darktower',      name: 'Dark Tower',      icon: 'darktower' },
+            { type: 'lighttower',     name: 'Light Tower',     icon: 'lighttower' },
+            { type: 'psychictower',   name: 'Psychic Tower',   icon: 'psychictower' },
+            { type: 'windtower',      name: 'Wind Tower',      icon: 'windtower' }
         ];
 
-        const connectPairs = [
-            [0, 1], [1, 2],
-            [3, 4], [4, 5],
-            [6, 7], [7, 8],
-            [0, 3], [3, 6],
-            [1, 4], [4, 7],
-            [2, 5], [5, 8]
-        ];
+        const pathDetails = {
+            damage: 'Heavy damage boost with each upgrade.',
+            speed:  'Faster attack rate to hit more enemies quickly.',
+            range:  'Increases target radius so the tower can reach farther.'
+        };
 
-        connectPairs.forEach(pair => {
-            const a = nodePositions[pair[0]];
-            const b = nodePositions[pair[1]];
-            upgradesGraphics.moveTo(a.x, a.y);
-            upgradesGraphics.lineTo(b.x, b.y);
-        });
+        const listX = this.scale.width * 0.06;
+        const listY = this.scale.height * 0.28;
+        const listWidth = this.scale.width * 0.54;
+        const listHeight = this.scale.height * 0.62;
+        const sectionWidth = listWidth - 24;
+        const sectionSpacing = 18;
+        const cardHeight = 84;
+        const cardPadding = 16;
 
-        upgradesGraphics.strokePath();
+        const detailX = this.scale.width * 0.70;
+        const detailWidth = this.scale.width * 0.24;
 
-        const upgradeTooltip = this.add.text(0, 0, '', {
-            fontFamily: 'Arial',
-            fontSize: '24px',
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 5
-        }).setOrigin(0.5).setVisible(false);
+        const detailPanel = this.add.rectangle(
+            detailX,
+            listY,
+            detailWidth,
+            listHeight,
+            0x111111,
+            1
+        ).setOrigin(0, 0);
 
-        const upgradeNodes = [];
+        const detailBorder = this.add.rectangle(
+            detailX - 3,
+            listY - 3,
+            detailWidth + 6,
+            listHeight + 6,
+            0xff0000,
+            0.25
+        ).setOrigin(0, 0);
 
-        nodePositions.forEach((pos, i) => {
-            const node = this.add.circle(
-                pos.x,
-                pos.y,
-                26,
-                0x222222,
+        const detailHeader = this.add.text(
+            detailX + detailWidth / 2,
+            listY + 20,
+            'Upgrade Details',
+            {
+                fontFamily: 'Arial',
+                fontSize: '28px',
+                color: '#ffffff'
+            }
+        ).setOrigin(0.5, 0);
+
+        const detailName = this.add.text(
+            detailX + detailWidth / 2,
+            listY + 64,
+            'Select an upgrade',
+            {
+                fontFamily: 'Arial',
+                fontSize: '24px',
+                color: '#ffcc33',
+                wordWrap: { width: detailWidth - 32 }
+            }
+        ).setOrigin(0.5, 0);
+
+        const detailDesc = this.add.text(
+            detailX + 20,
+            listY + 110,
+            'Click any upgrade card to see the label and cost here.',
+            {
+                fontFamily: 'Arial',
+                fontSize: '20px',
+                color: '#dddddd',
+                wordWrap: { width: detailWidth - 40 }
+            }
+        ).setOrigin(0, 0);
+
+        const detailBonus = this.add.text(
+            detailX + 20,
+            listY + 220,
+            '',
+            {
+                fontFamily: 'Arial',
+                fontSize: '20px',
+                color: '#a8ff7f',
+                wordWrap: { width: detailWidth - 40 }
+            }
+        ).setOrigin(0, 0);
+
+        const upgradesScroll = this.add.container(listX, listY);
+        const maskShape = this.make.graphics({ x: 0, y: 0, add: false });
+        maskShape.fillStyle(0xffffff);
+        maskShape.fillRect(listX, listY, listWidth, listHeight);
+        upgradesScroll.setMask(new Phaser.Display.Masks.GeometryMask(this, maskShape));
+
+        const upgradeIcons = [];
+        let selectedCard = null;
+        const setTowerIconsUpgraded = () => {
+            upgradeIcons.forEach(icon => {
+                if (icon.originalFrame) {
+                    icon.setTexture('turret_up', icon.originalFrame);
+                }
+            });
+        };
+
+        const selectUpgrade = (upgradeCard, tower, path, def) => {
+            if (selectedCard) {
+                selectedCard.setStrokeStyle(0);
+            }
+            selectedCard = upgradeCard;
+            selectedCard.setStrokeStyle(2, 0xffcc33);
+            detailName.setText(`${tower.name} · ${def.label}`);
+            detailDesc.setText(pathDetails[path]);
+            detailBonus.setText(`Base cost: $${def.costs[0]} / Next level: $${def.costs[1]}`);
+            setTowerIconsUpgraded();
+        };
+
+        let currentY = 0;
+        towerInfo.forEach((tower) => {
+            const sectionTop = currentY;
+            const sectionHeight = 140 + (cardHeight + 12) * 3;
+
+            const sectionBg = this.add.rectangle(
+                0,
+                sectionTop,
+                sectionWidth,
+                sectionHeight,
+                0x111111,
                 1
-            );
-            const glow = this.add.circle(
-                pos.x,
-                pos.y,
-                32,
+            ).setOrigin(0, 0);
+
+            const sectionBorder = this.add.rectangle(
+                0,
+                sectionTop,
+                sectionWidth,
+                sectionHeight,
                 0xff0000,
-                0.35
-            );
+                0.18
+            ).setOrigin(0, 0).setStrokeStyle(2, 0xff0000, 0.18);
 
-            this.tweens.add({
-                targets: glow,
-                alpha: { from: 0.18, to: 0.6 },
-                duration: 1500 + i * 80,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
+            const towerIcon = this.add.image(20, sectionTop + 34, 'turret', tower.icon)
+                .setOrigin(0, 0)
+                .setScale(1.2);
+            towerIcon.originalFrame = tower.icon;
+            upgradeIcons.push(towerIcon);
+
+            const towerLabel = this.add.text(
+                100,
+                sectionTop + 42,
+                tower.name,
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '22px',
+                    color: '#ffffff'
+                }
+            ).setOrigin(0, 0);
+
+            const towerDesc = this.add.text(
+                100,
+                sectionTop + 74,
+                'Damage, speed, and range upgrades available.',
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '16px',
+                    color: '#bbbbbb',
+                    wordWrap: { width: sectionWidth - 140 }
+                }
+            ).setOrigin(0, 0);
+
+            upgradesScroll.add([sectionBg, sectionBorder, towerIcon, towerLabel, towerDesc]);
+
+            ['damage', 'speed', 'range'].forEach((path, index) => {
+                const def = UPGRADE_PATHS[tower.type][path];
+                const cardY = sectionTop + 120 + index * (cardHeight + 12);
+                const card = this.add.rectangle(
+                    0,
+                    cardY,
+                    sectionWidth - cardPadding * 2,
+                    cardHeight,
+                    0x191919,
+                    1
+                ).setOrigin(0, 0).setStrokeStyle(2, 0x2a2a2a, 1);
+
+                const cardTitle = this.add.text(
+                    20,
+                    cardY + 12,
+                    def.label,
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: '18px',
+                        color: '#ffffff'
+                    }
+                ).setOrigin(0, 0);
+
+                const cardSub = this.add.text(
+                    20,
+                    cardY + 40,
+                    pathDetails[path],
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: '14px',
+                        color: '#a8ff7f',
+                        wordWrap: { width: sectionWidth - cardPadding * 4 }
+                    }
+                ).setOrigin(0, 0);
+
+                const cardCost = this.add.text(
+                    sectionWidth - cardPadding * 2 - 16,
+                    cardY + 16,
+                    `$${def.costs[0]}`,
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: '18px',
+                        color: '#ffcc33'
+                    }
+                ).setOrigin(1, 0);
+
+                card.setInteractive({ useHandCursor: true });
+                card.on('pointerover', () => card.setFillStyle(0x2a2a2a));
+                card.on('pointerout', () => card.setFillStyle(0x191919));
+                card.on('pointerdown', () => selectUpgrade(card, tower, path, def));
+
+                upgradesScroll.add([card, cardTitle, cardSub, cardCost]);
             });
 
-            node.setInteractive({ useHandCursor: true });
-
-            node.on('pointerover', () => {
-                upgradeTooltip.setText(pos.label + '\n+10% bonus');
-                upgradeTooltip.setPosition(pos.x, pos.y - 60);
-                upgradeTooltip.setVisible(true);
-                this.tweens.add({ targets: node, scale: 1.15, duration: 120, ease: 'Quad.easeOut' });
-            });
-
-            node.on('pointerout', () => {
-                upgradeTooltip.setVisible(false);
-                this.tweens.add({ targets: node, scale: 1, duration: 120, ease: 'Quad.easeOut' });
-            });
-
-            node.on('pointerdown', () => {
-                this.tweens.add({
-                    targets: glow,
-                    alpha: { from: 0.9, to: 0.35 },
-                    duration: 220,
-                    yoyo: true,
-                    ease: 'Quad.easeOut'
-                });
-            });
-
-            upgradeNodes.push(node);
-            this.upgradesPage.add(glow);
-            this.upgradesPage.add(node);
+            currentY += sectionHeight + sectionSpacing;
         });
 
-        this.upgradesPage.add(upgradesGraphics);
+        const scrollHeight = currentY;
+        this.upgradesScrollY = 0;
+        this.upgradesScroll = upgradesScroll;
+        this.upgradesScrollBounds = Math.min(0, listHeight - scrollHeight - 20);
+        this.upgradesPage.add(upgradesScroll);
+
+        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+            if (!this.upgradesPage.visible) return;
+            this.upgradesScrollY = Phaser.Math.Clamp(this.upgradesScrollY - deltaY * 0.5, this.upgradesScrollBounds, 0);
+            this.upgradesScroll.setY(listY + this.upgradesScrollY);
+        });
+
+        this.upgradesPage.add(detailBorder);
+        this.upgradesPage.add(detailPanel);
         this.upgradesPage.add(upgradesTitle);
         this.upgradesPage.add(upgradesHint);
-        this.upgradesPage.add(upgradeTooltip);
+        this.upgradesPage.add(detailHeader);
+        this.upgradesPage.add(detailName);
+        this.upgradesPage.add(detailDesc);
+        this.upgradesPage.add(detailBonus);
 
         const settingsTitle = this.add.text(
             this.scale.width / 2,
