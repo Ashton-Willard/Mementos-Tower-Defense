@@ -35,7 +35,9 @@ export default class Enemy extends Phaser.GameObjects.Image {
         this.body.enable = true;
     }
 
-    update(time, delta, path) {
+    update(time, delta, path, isPaused) {
+        if (isPaused) return;
+
         this.follower.t += this.speed * delta;
 
         path.getPoint(this.follower.t, this.follower.vec);

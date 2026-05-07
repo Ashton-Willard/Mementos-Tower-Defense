@@ -12,8 +12,13 @@ export default class MainScene extends Phaser.Scene {
 
     preload() {
         this.load.image('bullet', 'src/assets/bullet.png');
+
         this.load.tilemapTiledJSON('map1', 'src/assets/maps/map1.tmj');
+        this.load.tilemapTiledJSON('map2', 'src/assets/maps/Map2.tmj');
+
+        this.load.image('BloonsCutMap1.png', 'src/assets/maps/BloonsCutMap1.png');
         this.load.image('tiles', 'src/assets/tiles.png');
+
         this.load.image('enemy_shadow', 'src/assets/enemies/enemy_shadow.png');
 
         this.load.spritesheet('turret', 'src/assets/spritesheet.png', {
@@ -22,24 +27,22 @@ export default class MainScene extends Phaser.Scene {
         });
     }
 
-    create() {
+    create(data) {
+        this.difficulty = data?.difficulty || 'NORMAL';
+        this.selectedMap = data?.map || 'map1';
 
-        // Debug toggles
+        console.log("Difficulty:", this.difficulty);
+        console.log("Selected Map:", this.selectedMap);
+
         this.keyF2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F2);
         this.keyF3 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F3);
 
-        // ============================================================
-        // RESPONSIVE SCALING
-        // ============================================================
         const screenW = this.scale.width;
         const screenH = this.scale.height;
 
         this.sidebarWidth = screenW * 0.20;
         this.playWidth = screenW - this.sidebarWidth;
 
-        // ============================================================
-        // MONEY + LIVES SYSTEM
-        // ============================================================
         this.money = 500;
         this.lives = 100;
 
@@ -55,9 +58,6 @@ export default class MainScene extends Phaser.Scene {
             padding: { x: 10, y: 5 }
         }).setScrollFactor(0).setDepth(9999);
 
-        // ============================================================
-        // START WAVE BUTTON
-        // ============================================================
         this.roundButton = this.add.text(20, 20, "Start Wave", {
             fontSize: "24px",
             color: "#ffffff",
@@ -68,50 +68,58 @@ export default class MainScene extends Phaser.Scene {
         .on('pointerdown', () => {
             this.roundButton.setVisible(false);
             this.waveManager.startNextWave();
-        });
+        })
+        .setDepth(9999)
+        .setScrollFactor(0);
 
-        this.roundButton.setDepth(9999).setScrollFactor(0);
-
-        // ============================================================
         // MAP
-        // ============================================================
-        this.map = this.make.tilemap({ key: 'map1' });
+        this.map = this.make.tilemap({ key: this.selectedMap });
         const tileset = this.map.addTilesetImage('Testing_Tileset', 'tiles');
 
-        this.map.createLayer('Tile Layer 1', tileset);
-        this.map.createLayer('Pathing', tileset);
-
-        // ============================================================
-        // SCALE MAP TO FIT PLAY AREA
-        // ============================================================
         const scaleX = this.playWidth / this.map.widthInPixels;
         const scaleY = screenH / this.map.heightInPixels;
         const mapScale = Math.max(scaleX, scaleY);
 
-        this.map.layers.forEach(layer => {
-            layer.tilemapLayer.setScale(mapScale);
-        });
+        // BACKGROUND IMAGE FOR MAP2 (from imagelayer or direct)
+        if (this.selectedMap === 'map2') {
+            // If using imagelayer in TMJ, you can instead iterate map.layers.
+            const img = this.add.image(0, 0, 'BloonsCutMap1.png')
+                .setOrigin(0)
+                .setDepth(-10)
+                .setScale(mapScale);
+
+            // If you want to match TMJ offsets exactly, tweak here:
+            img.x += -17.3333333333334 * mapScale;
+            img.y += 1.33333333333337 * mapScale;
+        }
+
+        // TILE LAYERS
+        const baseLayer = this.map.createLayer('Tile Layer 1', tileset);
+        baseLayer.setScale(mapScale);
+
+        // MAP1: keep Pathing layer VISIBLE (as you wanted)
+        if (this.selectedMap === 'map1') {
+            if (this.map.getLayerIndex('Pathing') !== -1) {
+                const pathLayer = this.map.createLayer('Pathing', tileset);
+                pathLayer.setScale(mapScale);
+                pathLayer.setVisible(true); // explicitly visible
+            }
+        }
 
         this.cameras.main.setBounds(0, 0, this.playWidth, screenH);
         this.cameras.main.setScroll(0, 0);
         this.cameras.main.setZoom(1);
 
-        // ============================================================
-        // PATH MANAGER (Bloons-style)
-        // ============================================================
+        // PATH MANAGER (uses hardcoded paths per map)
         this.pathManager = new PathManager(this, mapScale);
         this.path = this.pathManager.path;
 
-        // ============================================================
         // GROUPS
-        // ============================================================
         this.enemies = this.physics.add.group({ classType: Enemy });
         this.bullets = this.physics.add.group({ classType: Bullet });
         this.turrets = this.add.group();
 
-        // ============================================================
         // SIDEBAR
-        // ============================================================
         const sidebarX = this.playWidth;
 
         this.add.rectangle(
@@ -123,11 +131,8 @@ export default class MainScene extends Phaser.Scene {
         )
         .setOrigin(0, 0)
         .setScrollFactor(0)
-        .setDepth(9998);
+        .setDepth(9999);
 
-        // ============================================================
-        // TOWER DATA
-        // ============================================================
         this.towerData = {
             lightningtower: { cost: 100, frame: 0 },
             icetower:       { cost: 120, frame: 1 },
@@ -135,9 +140,6 @@ export default class MainScene extends Phaser.Scene {
             rocktower:      { cost: 200, frame: 3 }
         };
 
-        // ============================================================
-        // SIDEBAR ICONS
-        // ============================================================
         let yOffset = 120;
 
         Object.keys(this.towerData).forEach(type => {
@@ -165,15 +167,9 @@ export default class MainScene extends Phaser.Scene {
             yOffset += 140;
         });
 
-        // ============================================================
-        // DRAG STATE
-        // ============================================================
         this.draggingTower = null;
         this.draggingType = null;
 
-        // ============================================================
-        // DRAG EVENTS
-        // ============================================================
         this.input.on('dragstart', (pointer, gameObject) => {
             if (!gameObject.towerType) return;
 
@@ -202,10 +198,7 @@ export default class MainScene extends Phaser.Scene {
 
             this.draggingTower.setPosition(snappedX, snappedY);
 
-            const worldX = snappedX;
-            const worldY = snappedY;
-
-            if (this.pathManager.canPlace(worldX, worldY)) {
+            if (this.pathManager.canPlace(snappedX, snappedY)) {
                 this.draggingTower.setTint(0xffffff);
             } else {
                 this.draggingTower.setTint(0xff0000);
@@ -221,7 +214,6 @@ export default class MainScene extends Phaser.Scene {
             const data = this.towerData[this.draggingType];
 
             if (this.pathManager.canPlace(snappedX, snappedY) && this.money >= data.cost) {
-
                 const turret = new Turret(this, this.draggingType);
 
                 this.add.existing(turret);
@@ -245,27 +237,59 @@ export default class MainScene extends Phaser.Scene {
             this.draggingType = null;
         });
 
-        // ============================================================
-        // WAVE MANAGER
-        // ============================================================
-        this.waveManager = new WaveManager(this, this.enemies, this.path);
+        this.waveManager = new WaveManager(this, this.enemies, this.path, this.difficulty);
 
-        // ============================================================
-        // COLLISIONS
-        // ============================================================
         this.physics.add.overlap(this.enemies, this.bullets, this.damageEnemy, null, this);
+
+        // --- PAUSE MENU UI ---
+        this.pauseContainer = this.add.container(this.scale.width / 2, this.scale.height / 2);
+        this.pauseContainer.setDepth(9999);
+
+        // Background
+        const panel = this.add.rectangle(0, 0, 300, 200, 0x000000, 0.75).setStrokeStyle(3, 0xffffff);
+
+        // Resume button
+        const resumeBtn = this.add.text(0, -40, "Resume", {
+            fontSize: "28px",
+            color: "#ffffff"
+        }).setOrigin(0.5).setInteractive();
+
+        // Exit button
+        const exitBtn = this.add.text(0, 40, "Exit to Menu", {
+            fontSize: "28px",
+            color: "#ffffff"
+        }).setOrigin(0.5).setInteractive();
+
+        this.pauseContainer.add([panel, resumeBtn, exitBtn]);
+        this.pauseContainer.setVisible(false);
+
+        // Resume click
+        resumeBtn.on("pointerdown", () => {
+            this.resumeGame();
+        });
+
+        // Exit click
+        exitBtn.on("pointerdown", () => {
+            this.scene.stop("MainScene");
+            this.scene.start("MenuScene"); // change to your menu scene key
+        });
+
+        this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+
+        this.escapeKey.on("down", () => {
+            if (this.isPaused) {
+                this.resumeGame();
+            } else {
+                this.pauseGame();
+            }
+        });
     }
 
-    // ============================================================
-    // UPDATE LOOP
-    // ============================================================
     update(time, delta) {
-        if (this.waveManager) {
-            this.waveManager.update(time, delta);
-        }
+        if (this.waveManager) this.waveManager.update(time, delta);
 
         this.enemies.getChildren().forEach(enemy => {
-            if (enemy.active) enemy.update(time, delta, this.path);
+            if (enemy.active) enemy.update(time, delta, this.path, this.isPaused);
         });
 
         this.bullets.getChildren().forEach(bullet => {
@@ -276,7 +300,6 @@ export default class MainScene extends Phaser.Scene {
             if (turret.active) turret.update(time, delta);
         });
 
-        // Debug toggles
         if (Phaser.Input.Keyboard.JustDown(this.keyF2)) {
             this.pathManager.toggleBlocked();
         }
@@ -286,9 +309,6 @@ export default class MainScene extends Phaser.Scene {
         }
     }
 
-    // ============================================================
-    // BULLET + DAMAGE
-    // ============================================================
     getEnemyInRange(x, y, range) {
         return this.enemies.getChildren().find(e =>
             e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= range
@@ -307,9 +327,6 @@ export default class MainScene extends Phaser.Scene {
         }
     }
 
-    // ============================================================
-    // LIVES + GOLD
-    // ============================================================
     addGold(amount) {
         this.money += amount;
         this.moneyText.setText(`Money: $${this.money}`);
@@ -343,4 +360,31 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(9999)
         .setScrollFactor(0);
     }
+
+
+    pauseGame() {
+    this.isPaused = true;
+
+    // Pause gameplay systems ONLY
+    this.physics.world.pause();
+    if (this.waveManager) this.waveManager.pauseWaves?.();
+    this.time.paused = true;
+
+    // Show pause menu
+    this.pauseContainer.setVisible(true);
+    }
+
+    resumeGame() {
+        this.isPaused = false;
+
+        // Resume gameplay systems
+        this.physics.world.resume();
+        if (this.waveManager) this.waveManager.resumeWaves?.();
+        this.time.paused = false;
+
+        // Hide pause menu
+        this.pauseContainer.setVisible(false);
+    }
+
+
 }
