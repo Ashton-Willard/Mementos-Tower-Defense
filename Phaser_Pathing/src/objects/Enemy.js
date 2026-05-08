@@ -12,6 +12,7 @@ export default class Enemy extends Phaser.GameObjects.Image {
         this.maxHp = 100;
         this.hp = 100;
 
+<<<<<<< Updated upstream
         this.isBurning = false;
 this.burnTimer = 0;
 this.burnDamage = 0;
@@ -20,18 +21,24 @@ this.lastBurnTick = 0;
 this.burnDuration = 0;
 this.burnStartTime = 0;
 
+=======
+>>>>>>> Stashed changes
         this.follower = { t: 0, vec: new Phaser.Math.Vector2() };
 
         this.healthbar = new HealthBar(scene, this);
 
-        // Reward for defeating enemy
         this.reward = 10;
-
-        // How much damage enemy does
         this.leakDamage = 1;
+
+        this._dead = false;
     }
 
+<<<<<<< Updated upstream
     startOnPath(path){
+=======
+    startOnPath(path) {
+        this._dead = false;
+>>>>>>> Stashed changes
         this.follower.t = 0;
         this.hp = this.maxHp; // ✅ reset HP if reused
 
@@ -44,7 +51,11 @@ this.burnStartTime = 0;
     }
 
     update(time, delta, path) {
+<<<<<<< Updated upstream
         if (!this.active) return; // ✅ IMPORTANT
+=======
+        if (this._dead) return;
+>>>>>>> Stashed changes
 
         this.follower.t += this.speed * delta;
 
@@ -56,45 +67,25 @@ this.burnStartTime = 0;
         }
 
         if (this.follower.t >= 1) {
+            // Floating leak popup
+            const dmgText = this.scene.add.text(this.x, this.y, `-${this.leakDamage}`, {
+                fontSize: '20px', color: '#ff0000'
+            });
+            this.scene.tweens.add({
+                targets: dmgText,
+                y: this.y - 30, alpha: 0, duration: 600,
+                onComplete: () => dmgText.destroy()
+            });
 
-        // Floating leak popup
-        const dmgText = this.scene.add.text(this.x, this.y, `-${this.leakDamage}`, {
-            fontSize: "20px",
-            color: "#ff0000"
-        });
-        this.scene.tweens.add({
-            targets: dmgText,
-            y: this.y - 30,
-            alpha: 0,
-            duration: 600,
-            onComplete: () => dmgText.destroy()
-        });
+            if (this.scene.loseLives) {
+                this.scene.loseLives(this.leakDamage);
+            }
 
-        // Lose lives
-        if (this.scene.loseLives) {
-            this.scene.loseLives(this.leakDamage);
+            this.die(false);
         }
-
-        this.healthbar.destroy();
-        this.setActive(false);
-        this.setVisible(false);
-        this.body.enable = false;
-        this.die(false);
     }
 
-        // const dmgText = this.scene.add.text(this.x, this.y, `-${this.leakDamage}`,{
-        //     fontSize: "16px",
-        //     color: "#ff0000",
-        // });
-        // this.scene.tweens.add({
-        //     targets: dmgText,
-        //     y: this.y - 30,
-        //     alpha: 0,
-        //     duration: 600,
-        //     onComplete: ()=> dmgText.destroy()
-        // });
-    }
-
+<<<<<<< Updated upstream
     receiveDamage(amount){
         this.hp -= amount;
 
@@ -109,21 +100,32 @@ this.burnStartTime = 0;
             this.healthbar.destroy();
             this.die(true);
         }
+=======
+    receiveDamage(amount) {
+        if (this._dead) return;
+        this.hp -= amount;
+        if (this.hp <= 0) this.die(true);
+>>>>>>> Stashed changes
     }
 
     die(giveGold = true) {
+        if (this._dead) return;
+        this._dead = true;
+
         this.setActive(false);
         this.setVisible(false);
         this.body.enable = false;
 
-        // Award for defeating enemy
-        if(this.scene.addGold && giveGold){
+        if (this.healthbar) {
+            this.healthbar.destroy();
+            this.healthbar = null;
+        }
+
+        if (giveGold && this.scene.addGold) {
             this.scene.addGold(this.reward);
         }
 
-        
-        this.healthbar.destroy();
-        if(this.onDeath) {
+        if (this.onDeath) {
             this.onDeath();
         }
 
