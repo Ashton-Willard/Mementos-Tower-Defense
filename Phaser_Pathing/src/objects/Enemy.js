@@ -12,7 +12,6 @@ export default class Enemy extends Phaser.GameObjects.Image {
         this.maxHp = 100;
         this.hp = 100;
 
-<<<<<<< Updated upstream
         this.isBurning = false;
 this.burnTimer = 0;
 this.burnDamage = 0;
@@ -21,8 +20,6 @@ this.lastBurnTick = 0;
 this.burnDuration = 0;
 this.burnStartTime = 0;
 
-=======
->>>>>>> Stashed changes
         this.follower = { t: 0, vec: new Phaser.Math.Vector2() };
 
         this.healthbar = new HealthBar(scene, this);
@@ -33,12 +30,8 @@ this.burnStartTime = 0;
         this._dead = false;
     }
 
-<<<<<<< Updated upstream
-    startOnPath(path){
-=======
     startOnPath(path) {
         this._dead = false;
->>>>>>> Stashed changes
         this.follower.t = 0;
         this.hp = this.maxHp; // ✅ reset HP if reused
 
@@ -51,11 +44,7 @@ this.burnStartTime = 0;
     }
 
     update(time, delta, path) {
-<<<<<<< Updated upstream
-        if (!this.active) return; // ✅ IMPORTANT
-=======
         if (this._dead) return;
->>>>>>> Stashed changes
 
         this.follower.t += this.speed * delta;
 
@@ -85,27 +74,10 @@ this.burnStartTime = 0;
         }
     }
 
-<<<<<<< Updated upstream
-    receiveDamage(amount){
-        this.hp -= amount;
-
-        if (this.hp <= 0) {
-            this.die(); // ✅ use shared cleanup
-        }
-    }
-
-    die() {
-        // 🧹 Destroy health bar
-        if (this.healthbar) {
-            this.healthbar.destroy();
-            this.die(true);
-        }
-=======
     receiveDamage(amount) {
         if (this._dead) return;
         this.hp -= amount;
         if (this.hp <= 0) this.die(true);
->>>>>>> Stashed changes
     }
 
     die(giveGold = true) {
