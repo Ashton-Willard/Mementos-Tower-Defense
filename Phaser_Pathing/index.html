@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phaser_Pathing</title>
+
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            line-height: 1;
+            font-family: Arial, sans-serif;
+            background-color: #040218;
+        }
+
+        #game-container {
+            position: relative;
+        }
+
+        #game-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* REAL HTML INPUTS ABOVE PHASER */
+        #auth-wrapper {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 300px;
+        }
+
+        #auth-wrapper input {
+            font-size: 20px;
+            padding: 10px;
+            border-radius: 6px;
+            border: 2px solid #ff2a2a;
+        }
+
+        #auth-wrapper button {
+            padding: 10px;
+            font-size: 20px;
+            background: #ff2a2a;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container"></div>
+
+    <!-- HTML LOGIN UI -->
+    <div id="auth-wrapper">
+        <input id="email" type="email" placeholder="Email">
+        <input id="password" type="password" placeholder="Password">
+        <button id="login-btn">Login</button>
+        <button id="signup-btn">Create Account</button>
+        <p id="auth-error" style="color:#ff2a2a; font-size:18px;"></p>
+    </div>
+
+    <!-- PHASER -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.js"></script>
+
+    <!-- FIREBASE -->
+    <script type="module" src="./src/systems/firebase.js"></script>
+
+    <!-- YOUR GAME -->
+    <script type="module" src="./src/main.js"></script>
+
+    <!-- AUTH LOGIC -->
+    <script type="module">
+        import { auth } from "./src/systems/firebase.js";
+        import {
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+        // Detect fresh launch (NOT refresh)
+        const freshLaunch = !localStorage.getItem("gameAlreadyOpened");
+        localStorage.setItem("gameAlreadyOpened", "true");
+
+        // Clear flag when tab closes (NOT on refresh)
+        window.addEventListener("beforeunload", () => {
+            localStorage.removeItem("gameAlreadyOpened");
+        });
+
+        const email = document.getElementById("email");
+        const password = document.getElementById("password");
+        const loginBtn = document.getElementById("login-btn");
+        const signupBtn = document.getElementById("signup-btn");
+        const errorText = document.getElementById("auth-error");
+        const wrapper = document.getElementById("auth-wrapper");
+
+        loginBtn.onclick = async () => {
+            try {
+                await signInWithEmailAndPassword(auth, email.value, password.value);
+                wrapper.style.display = "none";
+            } catch (err) {
+                errorText.textContent = err.message;
+            }
+        };
+
+        signupBtn.onclick = async () => {
+            try {
+                await createUserWithEmailAndPassword(auth, email.value, password.value);
+                wrapper.style.display = "none";
+            } catch (err) {
+                errorText.textContent = err.message;
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user && !freshLaunch) {
+                // Refresh → keep logged in
+                wrapper.style.display = "none";
+            } else {
+                // Fresh launch → force login
+                wrapper.style.display = "flex";
+            }
+        });
+    </script>
+</body>
+</html>
