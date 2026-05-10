@@ -97,6 +97,14 @@ export default class MainScene extends Phaser.Scene {
         const baseLayer = this.map.createLayer('Tile Layer 1', tileset);
         baseLayer.setScale(mapScale);
 
+        // Hide Tile Layer 1 ONLY for map2
+        if (this.selectedMap === 'map2') {
+            baseLayer.setVisible(false);
+        } else {
+            baseLayer.setVisible(true);
+        }
+
+
         // MAP1: keep Pathing layer VISIBLE (as you wanted)
         if (this.selectedMap === 'map1') {
             if (this.map.getLayerIndex('Pathing') !== -1) {

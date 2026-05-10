@@ -2,6 +2,10 @@ export default class PathManager {
     constructor(scene, mapScale) {
         this.scene = scene;
         this.mapScale = mapScale;
+        this.radiusByMap = {
+            map1: 48,
+            map2: 38
+        };
 
         // ============================================================
         // MAP 1: original hardcoded path (unscaled)
@@ -21,127 +25,111 @@ export default class PathManager {
                 [272, 496],
                 [336, 528],
                 [944, 528]
+            ],
+
+            // ============================================================
+            // MAP 2: handcrafted path following the stone walkway
+            // ============================================================
+            map2: [
+                // Start (left side)
+                [0, 320],
+                [64, 320],
+                [128, 320],
+                [192, 320],
+                [256, 320],
+                [286, 320],
+
+                // Up
+                [286, 240],
+                [286, 176],
+                [286, 156],
+
+                // Right across top-left section
+                [320, 156],
+                [384, 156],
+                [416, 156],
+                [480, 156],
+
+                // Down long middle section
+                [480, 240],
+                [480, 304],
+                [480, 368],
+                [480, 432],
+                [480, 472],
+                [480, 484],
+
+                // Left
+                [320, 484],
+                [256, 484],
+
+                // Down
+                [256, 496],
+                [256, 536],
+                [256, 586],
+
+
+                // Right along bottom
+                [320, 586],
+                [384, 586],
+                [448, 586],
+                [512, 586],
+                [576, 586],
+                [640, 586],
+                [704, 586],
+                [772, 586],
+
+
+                // Up right side
+                [772, 432],
+                [772, 390],
+
+                // Left middle-right section
+                [640, 390],
+                [576, 390],
+
+                // Up
+                [576, 304],
+                [576, 250],
+
+                // Right
+                [576, 250],
+                [640, 250],
+                [704, 250],
+                [764, 250],
+                [804, 250],
+
+                // Up to exit
+                [804, 176],
+                [804, 112],
+                [804, 48],
+                [804, 38],
+                [804, 28],
+                [740, 28],
+                [696, 28],
+                [606, 28],
+                [570, 28],
+                [570, 0]
             ]
         };
 
-        if (scene.selectedMap === 'map2') {
-            // Build from TMJ tile data (tile index 34 in "Tile Layer 1")
-            this.points = this.buildMap2PathFromTiles(scene.map);
-        } else {
-            this.points = this.pathDefinitions[scene.selectedMap] || [];
-        }
+        // Select correct path
+        this.points = this.pathDefinitions[scene.selectedMap] || [];
 
+        // Build Phaser path
         this.path = this.buildPhaserPath();
+
+        // Blocked tiles
         this.blockedTiles = this.samplePathTiles();
 
+        // Debug layers
         this.blockedDebug = scene.add.graphics().setDepth(9998);
         this.pathDebug = scene.add.graphics().setDepth(9998);
 
         this.showBlocked = true;
-        this.showPath = true;
+               this.showPath = true;
 
         this.drawBlockedTiles();
         this.drawPath();
-    }
-
-    // ============================================================
-    // MAP 2: derive path from tile index 34 in "Tile Layer 1"
-    // ============================================================
-    buildMap2PathFromTiles(map) {
-        const layer = map.getLayer('Tile Layer 1').tilemapLayer;
-        const tileSize = map.tileWidth; // 32
-        const pathTiles = [];
-
-        // Collect all path tiles (index 34)
-        layer.forEachTile(tile => {
-            if (tile.index === 34) {
-                pathTiles.push({ x: tile.x, y: tile.y });
-            }
-        });
-
-        if (pathTiles.length === 0) {
-            console.warn('No path tiles (34) found for map2.');
-            return [];
-        }
-
-        // Build a quick lookup by (x,y)
-        const tileSet = new Set(pathTiles.map(t => `${t.x},${t.y}`));
-
-        // Helper to get neighbors (4‑directional)
-        const getNeighbors = (t) => {
-            const dirs = [
-                { dx: 1, dy: 0 },
-                { dx: -1, dy: 0 },
-                { dx: 0, dy: 1 },
-                { dx: 0, dy: -1 }
-            ];
-            const res = [];
-            for (const d of dirs) {
-                const nx = t.x + d.dx;
-                const ny = t.y + d.dy;
-                if (tileSet.has(`${nx},${ny}`)) {
-                    res.push({ x: nx, y: ny });
-                }
-            }
-            return res;
-        };
-
-        // Find start tile: one with only 1 neighbor (path endpoint)
-        let start = null;
-        for (const t of pathTiles) {
-            const neighbors = getNeighbors(t);
-            if (neighbors.length === 1) {
-                start = t;
-                break;
-            }
-        }
-        if (!start) {
-            // fallback: just pick the leftmost/topmost
-            start = pathTiles.reduce((a, b) =>
-                (b.x < a.x || (b.x === a.x && b.y < a.y)) ? b : a
-            );
-        }
-
-        // Walk the path from start to end
-        const ordered = [];
-        const visited = new Set();
-        let current = start;
-        let prevKey = null;
-
-        while (current) {
-            const key = `${current.x},${current.y}`;
-            ordered.push(current);
-            visited.add(key);
-
-            const neighbors = getNeighbors(current)
-                .filter(n => !visited.has(`${n.x},${n.y}`));
-
-            if (neighbors.length === 0) {
-                break; // reached end
-            }
-
-            // Prefer continuing straight if possible, otherwise just take first
-            let next = neighbors[0];
-            if (neighbors.length > 1 && prevKey) {
-                const [px, py] = prevKey.split(',').map(Number);
-                const vx = current.x - px;
-                const vy = current.y - py;
-                const straight = neighbors.find(n => (n.x - current.x === vx && n.y - current.y === vy));
-                if (straight) next = straight;
-            }
-
-            prevKey = key;
-            current = next;
-        }
-
-        // Convert tile coords -> unscaled pixel coords (center of tile)
-        const points = ordered.map(t => {
-            const worldX = t.x * tileSize + tileSize / 2;
-            const worldY = t.y * tileSize + tileSize / 2;
-            return [worldX, worldY];
-        });
-
-        return points;
     }
 
     // ============================================================
@@ -169,7 +157,10 @@ export default class PathManager {
 
         const totalLength = this.path.getLength();
         const step = 8;
-        const RADIUS = 48 * this.mapScale;
+
+        // Per‑map radius
+        const baseRadius = this.radiusByMap[this.scene.selectedMap] || 48;
+        const RADIUS = baseRadius * this.mapScale;
 
         for (let d = 0; d <= totalLength; d += step) {
             const p = this.path.getPoint(d / totalLength);
@@ -195,6 +186,7 @@ export default class PathManager {
 
         return blocked;
     }
+
 
     drawBlockedTiles() {
         this.blockedDebug.clear();
