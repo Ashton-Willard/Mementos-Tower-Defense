@@ -13,13 +13,19 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('back_arrow', 'src/assets/ui/back_arrow_red.png');
         this.load.atlas('turret', 'src/assets/spritesheet2.png', 'src/assets/spritesheet.json');
         this.load.atlas('turret_up', 'src/assets/spritesheetup.png', 'src/assets/spritesheetup.json');
+
+        // Placeholder map images
+        this.load.image('map1', 'src/assets/maps/map1_placeholder.png');
+        this.load.image('map2', 'src/assets/maps/map2_placeholder.png');
     }
 
     create() {
+        // Background
         const bg = this.add.image(0, 0, 'titleBG')
             .setOrigin(0, 0)
             .setDisplaySize(this.scale.width, this.scale.height);
 
+        // Dark overlay
         this.add.rectangle(
             this.scale.width / 2,
             this.scale.height / 2,
@@ -29,14 +35,14 @@ export default class GameScene extends Phaser.Scene {
             0.45
         );
 
+        // Floating enemy showcase
         const enemy = this.add.image(
             this.scale.width / 2,
             this.scale.height * 0.32,
             'enemy_showcase'
         )
             .setOrigin(0.5)
-            .setScale(2.8)
-            .setAlpha(1);
+            .setScale(2.8);
 
         this.tweens.add({
             targets: enemy,
@@ -56,8 +62,12 @@ export default class GameScene extends Phaser.Scene {
             ease: 'Sine.easeInOut'
         });
 
+        // ============================================================
+        // PAGE CREATION
+        // ============================================================
         const createPage = () => {
             const page = this.add.container(0, 0).setVisible(false);
+
             const overlay = this.add.rectangle(
                 this.scale.width / 2,
                 this.scale.height / 2,
@@ -74,11 +84,11 @@ export default class GameScene extends Phaser.Scene {
                 .setInteractive({ useHandCursor: true });
 
             back.on('pointerover', () => {
-                this.tweens.add({ targets: back, scale: 1.35, duration: 120, ease: 'Quad.easeOut' });
+                this.tweens.add({ targets: back, scale: 1.35, duration: 120 });
             });
 
             back.on('pointerout', () => {
-                this.tweens.add({ targets: back, scale: 1.2, duration: 120, ease: 'Quad.easeOut' });
+                this.tweens.add({ targets: back, scale: 1.2, duration: 120 });
             });
 
             back.on('pointerdown', () => {
@@ -88,35 +98,6 @@ export default class GameScene extends Phaser.Scene {
 
             page.add(back);
 
-            const ambientLeft = this.add.rectangle(
-                this.scale.width * 0.15,
-                this.scale.height * 0.2,
-                12,
-                120,
-                0xff0000,
-                0.4
-            );
-            const ambientRight = this.add.rectangle(
-                this.scale.width * 0.85,
-                this.scale.height * 0.8,
-                12,
-                120,
-                0xff0000,
-                0.4
-            );
-
-            this.tweens.add({
-                targets: [ambientLeft, ambientRight],
-                alpha: { from: 0.2, to: 0.7 },
-                duration: 1400,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
-            });
-
-            page.add(ambientLeft);
-            page.add(ambientRight);
-
             return page;
         };
 
@@ -125,20 +106,19 @@ export default class GameScene extends Phaser.Scene {
         this.upgradesPage = createPage();
         this.settingsPage = createPage();
 
-        const hideAllPages = () => {
+        this.hideAllPages = () => {
             this.playPage.setVisible(false);
             this.towersPage.setVisible(false);
             this.upgradesPage.setVisible(false);
             this.settingsPage.setVisible(false);
         };
 
-        this.hideAllPages = hideAllPages;
-
         const showPage = (page) => {
-            hideAllPages();
+            this.hideAllPages();
             page.setVisible(true);
             page.y = 40;
             page.alpha = 0;
+
             this.tweens.add({
                 targets: page,
                 alpha: 1,
@@ -148,6 +128,9 @@ export default class GameScene extends Phaser.Scene {
             });
         };
 
+        // ============================================================
+        // MENU BUTTONS
+        // ============================================================
         const createMenuButton = (label, x, callback) => {
             const text = this.add.text(
                 x,
@@ -163,11 +146,11 @@ export default class GameScene extends Phaser.Scene {
             text.setInteractive({ useHandCursor: true });
 
             text.on('pointerover', () => {
-                this.tweens.add({ targets: text, scale: 1.08, duration: 120, ease: 'Quad.easeOut' });
+                this.tweens.add({ targets: text, scale: 1.08, duration: 120 });
             });
 
             text.on('pointerout', () => {
-                this.tweens.add({ targets: text, scale: 1, duration: 120, ease: 'Quad.easeOut' });
+                this.tweens.add({ targets: text, scale: 1, duration: 120 });
             });
 
             text.on('pointerdown', callback);
@@ -203,30 +186,23 @@ export default class GameScene extends Phaser.Scene {
 
         this.menuButtons = [playBtn, towersBtn, upgradesBtn, settingsBtn, exitBtn];
 
-        this.hideMenu = () => {
-            this.menuButtons.forEach(b => b.setVisible(false));
-        };
+        this.hideMenu = () => this.menuButtons.forEach(b => b.setVisible(false));
+        this.showMenu = () => this.menuButtons.forEach(b => b.setVisible(true));
 
-        this.showMenu = () => {
-            this.menuButtons.forEach(b => b.setVisible(true));
-        };
+        // ============================================================
+        // PLAY PAGE CONTENT (2 MAP CAROUSEL)
+        // ============================================================
 
-        const playTitle = this.add.text(
-            this.scale.width / 2,
-            this.scale.height * 0.18,
-            'PLAY',
-            {
-                fontFamily: 'Arial',
-                fontSize: '64px',
-                color: '#ff2a2a',
-                stroke: '#000000',
-                strokeThickness: 8
-            }
-        ).setOrigin(0.5);
+        let selectedDiff = 'NORMAL';
+        let selectedMapIndex = 0;
 
+        const mapKeys = ['map1', 'map2'];
+        const mapNames = ['CORRIDOR OF SHADOWS', 'MAP 2'];
+
+        // START BUTTON
         const startButton = this.add.text(
             this.scale.width / 2,
-            this.scale.height * 0.38,
+            this.scale.height * 0.32,
             'START RUN',
             {
                 fontFamily: 'Arial',
@@ -240,30 +216,24 @@ export default class GameScene extends Phaser.Scene {
         startButton.setInteractive({ useHandCursor: true });
 
         startButton.on('pointerover', () => {
-            this.tweens.add({
-                targets: startButton,
-                scale: 1.08,
-                duration: 140,
-                ease: 'Quad.easeOut'
-            });
+            this.tweens.add({ targets: startButton, scale: 1.08, duration: 140 });
         });
 
         startButton.on('pointerout', () => {
-            this.tweens.add({
-                targets: startButton,
-                scale: 1,
-                duration: 140,
-                ease: 'Quad.easeOut'
-            });
+            this.tweens.add({ targets: startButton, scale: 1, duration: 140 });
         });
 
         startButton.on('pointerdown', () => {
-            this.scene.start('MainScene');
+            this.scene.start('MainScene', { 
+                difficulty: selectedDiff,
+                map: mapKeys[selectedMapIndex]
+            });
         });
 
+        // DIFFICULTY SELECTOR
         const diffLabel = this.add.text(
             this.scale.width / 2,
-            this.scale.height * 0.50,
+            this.scale.height * 0.46,
             'DIFFICULTY',
             {
                 fontFamily: 'Arial',
@@ -273,12 +243,11 @@ export default class GameScene extends Phaser.Scene {
         ).setOrigin(0.5);
 
         const difficulties = ['EASY', 'NORMAL', 'HARD'];
-        let selectedDiff = 'NORMAL';
 
         const diffButtons = difficulties.map((d, i) => {
             const t = this.add.text(
                 this.scale.width / 2 + (i - 1) * 160,
-                this.scale.height * 0.56,
+                this.scale.height * 0.52,
                 d,
                 {
                     fontFamily: 'Arial',
@@ -290,11 +259,11 @@ export default class GameScene extends Phaser.Scene {
             t.setInteractive({ useHandCursor: true });
 
             t.on('pointerover', () => {
-                this.tweens.add({ targets: t, scale: 1.08, duration: 120, ease: 'Quad.easeOut' });
+                this.tweens.add({ targets: t, scale: 1.08, duration: 120 });
             });
 
             t.on('pointerout', () => {
-                this.tweens.add({ targets: t, scale: 1, duration: 120, ease: 'Quad.easeOut' });
+                this.tweens.add({ targets: t, scale: 1, duration: 120 });
             });
 
             t.on('pointerdown', () => {
@@ -306,22 +275,47 @@ export default class GameScene extends Phaser.Scene {
             return t;
         });
 
-        const mapPreview = this.add.rectangle(
+        // MAP CAROUSEL
+        const previewY = this.scale.height * 0.72;
+
+        const leftArrow = this.add.text(
+            this.scale.width * 0.28,
+            previewY,
+            '<',
+            {
+                fontFamily: 'Arial',
+                fontSize: '64px',
+                color: '#ffffff'
+            }
+        ).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const rightArrow = this.add.text(
+            this.scale.width * 0.72,
+            previewY,
+            '>',
+            {
+                fontFamily: 'Arial',
+                fontSize: '64px',
+                color: '#ffffff'
+            }
+        ).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const mapPreview = this.add.image(
             this.scale.width / 2,
-            this.scale.height * 0.72,
-            this.scale.width * 0.4,
-            this.scale.height * 0.22,
-            0x111111,
-            1
-        );
+            previewY,
+            mapKeys[selectedMapIndex]
+        ).setOrigin(0.5);
+
+        mapPreview.setDisplaySize(this.scale.width * 0.35, this.scale.height * 0.22);
+
         const mapBorder = this.add.rectangle(
             this.scale.width / 2,
-            this.scale.height * 0.72,
-            this.scale.width * 0.4 + 6,
-            this.scale.height * 0.22 + 6,
+            previewY,
+            this.scale.width * 0.35 + 10,
+            this.scale.height * 0.22 + 10,
             0xff0000,
-            0.4
-        );
+            0.35
+        ).setOrigin(0.5);
 
         this.tweens.add({
             targets: mapBorder,
@@ -334,8 +328,8 @@ export default class GameScene extends Phaser.Scene {
 
         const mapText = this.add.text(
             this.scale.width / 2,
-            this.scale.height * 0.72,
-            'CORRIDOR OF SHADOWS',
+            this.scale.height * 0.60,
+            mapNames[selectedMapIndex],
             {
                 fontFamily: 'Arial',
                 fontSize: '28px',
@@ -343,10 +337,27 @@ export default class GameScene extends Phaser.Scene {
             }
         ).setOrigin(0.5);
 
-        this.playPage.add(playTitle);
+        const updateMap = () => {
+            mapPreview.setTexture(mapKeys[selectedMapIndex]);
+            mapText.setText(mapNames[selectedMapIndex]);
+        };
+
+        leftArrow.on('pointerdown', () => {
+            selectedMapIndex = (selectedMapIndex - 1 + mapKeys.length) % mapKeys.length;
+            updateMap();
+        });
+
+        rightArrow.on('pointerdown', () => {
+            selectedMapIndex = (selectedMapIndex + 1) % mapKeys.length;
+            updateMap();
+        });
+
+        // Add PLAY page elements
         this.playPage.add(startButton);
         this.playPage.add(diffLabel);
         diffButtons.forEach(b => this.playPage.add(b));
+        this.playPage.add(leftArrow);
+        this.playPage.add(rightArrow);
         this.playPage.add(mapPreview);
         this.playPage.add(mapBorder);
         this.playPage.add(mapText);
@@ -938,6 +949,7 @@ export default class GameScene extends Phaser.Scene {
             this.settingsPage.add(t.knob);
         });
 
+        // Fade in
         this.cameras.main.fadeIn(900, 0, 0, 0);
     }
 }

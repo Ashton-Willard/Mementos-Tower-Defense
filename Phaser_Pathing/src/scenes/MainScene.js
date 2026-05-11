@@ -19,6 +19,22 @@ export default class MainScene extends Phaser.Scene {
         this.load.atlas('turret', 'src/assets/spritesheet2.png', 'src/assets/spritesheet.json');
     }
 
+    create(data) {
+        this.difficulty = data?.difficulty || 'NORMAL';
+        this.selectedMap = data?.map || 'map1';
+
+        console.log("Difficulty:", this.difficulty);
+        console.log("Selected Map:", this.selectedMap);
+
+        this.keyF2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F2);
+        this.keyF3 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F3);
+
+        const screenW = this.scale.width;
+        const screenH = this.scale.height;
+
+        this.sidebarWidth = screenW * 0.20;
+        this.playWidth = screenW - this.sidebarWidth;
+
     create() {
         const CAM_W      = this.cameras.main.width;
         const CAM_H      = this.cameras.main.height;
@@ -385,4 +401,31 @@ export default class MainScene extends Phaser.Scene {
 
         bullet.deactivate();
     }
+
+
+    pauseGame() {
+    this.isPaused = true;
+
+    // Pause gameplay systems ONLY
+    this.physics.world.pause();
+    if (this.waveManager) this.waveManager.pauseWaves?.();
+    this.time.paused = true;
+
+    // Show pause menu
+    this.pauseContainer.setVisible(true);
+    }
+
+    resumeGame() {
+        this.isPaused = false;
+
+        // Resume gameplay systems
+        this.physics.world.resume();
+        if (this.waveManager) this.waveManager.resumeWaves?.();
+        this.time.paused = false;
+
+        // Hide pause menu
+        this.pauseContainer.setVisible(false);
+    }
+
+
 }

@@ -43,8 +43,8 @@ this.burnStartTime = 0;
         this.body.enable = true;
     }
 
-    update(time, delta, path) {
-        if (this._dead) return;
+    update(time, delta, path, isPaused) {
+        if (isPaused) return;
 
         this.follower.t += this.speed * delta;
 
