@@ -1,8 +1,11 @@
 import Enemy from '../objects/Enemy.js';
+import FastEnemy from '../objects/FastEnemy.js';
 import Turret from '../objects/Turret.js';
 import Bullet from '../objects/Bullet.js';
 import FireBullet from '../objects/FireBullet.js';
+import IceBullet from '../objects/IceBullet.js';
 import WaveManager from '../systems/WaveManager.js';
+import PathManager from '../systems/PathManager.js';
 import TowerUpgradeUI from './TowerUpgradeUI.js';
 
 export default class MainScene extends Phaser.Scene {
@@ -11,12 +14,22 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('bullet',     'src/assets/bullet.png');
-        this.load.image('firebullet', 'src/assets/firebullet.png');
+     this.load.image('bullet',     'src/assets/bullet.png');
+this.load.image('firebullet', 'src/assets/firebullet.png');
+this.load.image('icebullet',  'src/assets/icebullet.png');  
         this.load.image('tiles',      'src/assets/tiles.png');
-        this.load.tilemapTiledJSON('map1', 'src/assets/maps/map1.tmj');
         this.load.image('enemy',      'src/assets/enemy.png');
+
+        this.load.tilemapTiledJSON('map1', 'src/assets/maps/map1.tmj');
+        this.load.tilemapTiledJSON('map2', 'src/assets/maps/Map2.tmj');
+        this.load.image('BloonsCutMap1.png', 'src/assets/maps/BloonsCutMap1.png');
+
+this.load.image('enemy_shadow', 'src/assets/enemies/enemy_shadow.png');
+this.load.image('shaderunner',  'src/assets/enemies/shaderunner.png');
+this.load.image('irongolem',    'src/assets/enemies/irongolem.png');
+
         this.load.atlas('turret', 'src/assets/spritesheet2.png', 'src/assets/spritesheet.json');
+        this.load.atlas('turretup', 'src/assets/spritesheetup.png', 'src/assets/spritesheetup.json');
     }
 
     create(data) {
@@ -29,125 +42,66 @@ export default class MainScene extends Phaser.Scene {
         this.keyF2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F2);
         this.keyF3 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F3);
 
-        const CAM_W     = this.cameras.main.width;
-        const CAM_H     = this.cameras.main.height;
-        const SIDEBAR_W = 200;
-        const GAME_W    = CAM_W - SIDEBAR_W;
-        const sidebarX  = GAME_W;
-        const TILE_SIZE = 32;
+        const screenW    = this.scale.width;
+        const screenH    = this.scale.height;
+        const SIDEBAR_W  = Math.round(screenW * 0.20);
+        const GAME_W     = screenW - SIDEBAR_W;
+        const sidebarX   = GAME_W;
 
         // ── TILEMAP ───────────────────────────────────────────────────
-        const map     = this.make.tilemap({ key: 'map1' });
-        const tileset = map.addTilesetImage('Testing_Tileset', 'tiles');
+        this.map = this.make.tilemap({ key: this.selectedMap });
+        const tileset  = this.map.addTilesetImage('Testing_Tileset', 'tiles');
 
-        const baseLayer = map.createLayer('Tile Layer 1', tileset, 0, 0);
-        const pathLayer = map.createLayer('Pathing',      tileset, 0, 0);
-        pathLayer.setVisible(true);
+        const scaleX   = GAME_W  / this.map.widthInPixels;
+        const scaleY   = screenH / this.map.heightInPixels;
+        const mapScale = Math.max(scaleX, scaleY);
 
-        const mapWidth   = map.widthInPixels;
-        const mapHeight  = map.heightInPixels;
-        const mapScale   = Math.min(GAME_W / mapWidth, CAM_H / mapHeight);
-        const mapOffsetX = Math.round((GAME_W - mapWidth  * mapScale) / 2);
-        const mapOffsetY = Math.round((CAM_H  - mapHeight * mapScale) / 2);
-
-        baseLayer.setScale(mapScale).setPosition(mapOffsetX, mapOffsetY);
-        pathLayer.setScale(mapScale).setPosition(mapOffsetX, mapOffsetY);
-
-        // ── PATH FROM TILEMAP (BFS on tile index 48) ──────────────────
-        const worldFromTile = (tx, ty) => [
-            mapOffsetX + map.tileToWorldX(tx) * mapScale + (TILE_SIZE * mapScale) / 2,
-            mapOffsetY + map.tileToWorldY(ty) * mapScale + (TILE_SIZE * mapScale) / 2
-        ];
-
-        const PATH_TILE_INDEX = 48;
-        const pathTiles = [];
-        pathLayer.forEachTile(tile => {
-            if (tile.index === PATH_TILE_INDEX) pathTiles.push(tile);
-        });
-
-        const tileKey      = tile => `${tile.x},${tile.y}`;
-        const pathTileByKey = new Map(pathTiles.map(tile => [tileKey(tile), tile]));
-
-        const getNeighbors = tile => [
-            { dx:  0, dy:  1 }, { dx: -1, dy:  0 },
-            { dx:  1, dy:  0 }, { dx:  0, dy: -1 }
-        ]
-        .map(({ dx, dy }) => pathTileByKey.get(`${tile.x + dx},${tile.y + dy}`))
-        .filter(Boolean);
-
-        const START_TX = 2,  START_TY = 19;
-        const END_TX   = 29, END_TY   = 15;
-
-        const startTile = pathTileByKey.get(`${START_TX},${START_TY}`);
-        const endTile   = pathTileByKey.get(`${END_TX},${END_TY}`);
-
-        if (!startTile) console.warn(`Start tile (${START_TX},${START_TY}) not found`);
-        if (!endTile)   console.warn(`End tile (${END_TX},${END_TY}) not found`);
-
-        let orderedTiles = [];
-
-        if (startTile && endTile) {
-            const queue    = [startTile];
-            const cameFrom = new Map([[tileKey(startTile), null]]);
-            let foundEnd   = false;
-
-            while (queue.length && !foundEnd) {
-                const current = queue.shift();
-                if (current === endTile) { foundEnd = true; break; }
-                for (const nb of getNeighbors(current)) {
-                    const k = tileKey(nb);
-                    if (cameFrom.has(k)) continue;
-                    cameFrom.set(k, current);
-                    queue.push(nb);
-                }
-            }
-
-            if (foundEnd) {
-                let cursor = endTile;
-                while (cursor) {
-                    orderedTiles.push(cursor);
-                    cursor = cameFrom.get(tileKey(cursor));
-                }
-                orderedTiles.reverse();
-                console.log(`Path: ${orderedTiles.length} tiles`);
-            } else {
-                console.warn('BFS failed — check START/END tile coords');
-            }
+        // Map2 uses a background image instead of Tile Layer 1
+        if (this.selectedMap === 'map2') {
+            const img = this.add.image(0, 0, 'BloonsCutMap1.png')
+                .setOrigin(0).setDepth(-10).setScale(mapScale);
+            img.x += -17.3333333333334 * mapScale;
+            img.y +=   1.33333333333337 * mapScale;
         }
 
-        if (orderedTiles.length < 2) {
-            console.warn('Using fallback 2-point path');
-            this.pathPoints = [
-                ...worldFromTile(START_TX, START_TY),
-                ...worldFromTile(END_TX,   END_TY)
-            ];
-        } else {
-            this.pathPoints = orderedTiles.map(tile => worldFromTile(tile.x, tile.y)).flat();
+        const baseLayer = this.map.createLayer('Tile Layer 1', tileset);
+        baseLayer.setScale(mapScale);
+        baseLayer.setVisible(this.selectedMap !== 'map2');
+
+        // Map1 has an explicit Pathing layer to display
+        if (this.selectedMap === 'map1' && this.map.getLayerIndex('Pathing') !== -1) {
+            const pathLayer = this.map.createLayer('Pathing', tileset);
+            pathLayer.setScale(mapScale);
+            pathLayer.setVisible(true);
         }
 
-        if (this.pathPoints.length >= 2) {
-            this.path = this.add.path(this.pathPoints[0], this.pathPoints[1]);
-            for (let i = 2; i < this.pathPoints.length; i += 2) {
-                this.path.lineTo(this.pathPoints[i], this.pathPoints[i + 1]);
-            }
-        } else {
-            this.path = this.add.path(0, 0);
-            console.warn('Path generation failed: not enough path points');
-        }
+        this.cameras.main.setBounds(0, 0, GAME_W, screenH);
+        this.cameras.main.setScroll(0, 0);
+        this.cameras.main.setZoom(1);
 
-        const GRID_SIZE  = TILE_SIZE * mapScale;
-        const GHOST_SIZE = 48    * mapScale;
-        this.gridSize    = GRID_SIZE;
+        // ── PATH MANAGER ──────────────────────────────────────────────
+        // PathManager owns the Phaser Path and blocked-tile set.
+        // canPlace(worldX, worldY) is the only placement check needed.
+        this.pathManager = new PathManager(this, mapScale);
+        this.path        = this.pathManager.path;
+        this.gridSize    = 64 * mapScale;
 
-        // ── HUD ───────────────────────────────────────────────────────
+        // ── MONEY + LIVES ─────────────────────────────────────────────
         this.money = 500;
+        this.lives = 100;
 
         this.moneyText = this.add.text(16, 54, `💰 $${this.money}`, {
             fontSize: '18px', fontFamily: 'monospace',
             color: '#f0c040', stroke: '#000000', strokeThickness: 4
         }).setScrollFactor(0).setDepth(9999);
 
-        this.startButton = this.add.text(16, 16, '▶  Start Wave', {
+        this.livesText = this.add.text(16, 82, `❤ ${this.lives}`, {
+            fontSize: '18px', fontFamily: 'monospace',
+            color: '#ff6666', stroke: '#000000', strokeThickness: 4
+        }).setScrollFactor(0).setDepth(9999);
+
+        // ── START WAVE BUTTON ─────────────────────────────────────────
+        this.roundButton = this.add.text(16, 16, '▶  Start Wave', {
             fontSize: '18px', fontFamily: 'monospace',
             color: '#ffffff', stroke: '#000000', strokeThickness: 5,
             backgroundColor: '#1a1a2e', padding: { x: 12, y: 6 }
@@ -155,33 +109,34 @@ export default class MainScene extends Phaser.Scene {
         .setInteractive()
         .on('pointerover', function () { this.setStyle({ color: '#4ecca3' }); })
         .on('pointerout',  function () { this.setStyle({ color: '#ffffff' }); })
-        .on('pointerdown', () => this.startNextRound())
+        .on('pointerdown', () => {
+            this.roundButton.setVisible(false);
+            this.waveManager.startNextWave();
+        })
         .setDepth(9999).setScrollFactor(0);
-
-        // ── PAUSE STATE ───────────────────────────────────────────────
-        this.isPaused = false;
-        // Build pauseContainer here if you have a pause UI, e.g.:
-        // this.pauseContainer = this.add.container(...).setVisible(false);
 
         // ── GROUPS ────────────────────────────────────────────────────
         this.enemies     = this.physics.add.group({ classType: Enemy });
         this.bullets     = this.physics.add.group({ classType: Bullet,     runChildUpdate: false });
         this.fireBullets = this.physics.add.group({ classType: FireBullet, runChildUpdate: false });
+this.iceBullets = this.physics.add.group({ classType: IceBullet, runChildUpdate: false });
+this.physics.add.overlap(this.enemies, this.iceBullets, this.damageEnemy, null, this);
         this.turrets     = this.add.group();
 
         this.physics.add.overlap(this.enemies, this.bullets,     this.damageEnemy, null, this);
         this.physics.add.overlap(this.enemies, this.fireBullets, this.damageEnemy, null, this);
 
         // ── SIDEBAR ───────────────────────────────────────────────────
+        // Gradient fade at game/sidebar boundary
         const fadeW = 60;
         const grad  = this.add.graphics().setScrollFactor(0).setDepth(9997);
         for (let i = 0; i < fadeW; i++) {
             grad.fillStyle(0x0d0d1a, i / fadeW);
-            grad.fillRect(sidebarX - fadeW + i, 0, 1, CAM_H);
+            grad.fillRect(sidebarX - fadeW + i, 0, 1, screenH);
         }
-        this.add.rectangle(sidebarX, 0, SIDEBAR_W, CAM_H, 0x0d0d1a)
+        this.add.rectangle(sidebarX, 0, SIDEBAR_W, screenH, 0x0d0d1a)
             .setOrigin(0, 0).setScrollFactor(0).setDepth(9997);
-        this.add.rectangle(sidebarX, 0, 2, CAM_H, 0x4ecca3, 0.4)
+        this.add.rectangle(sidebarX, 0, 2, screenH, 0x4ecca3, 0.4)
             .setOrigin(0, 0).setScrollFactor(0).setDepth(9998);
 
         this.add.text(sidebarX + SIDEBAR_W / 2, 12, 'TOWERS', {
@@ -206,8 +161,6 @@ export default class MainScene extends Phaser.Scene {
         const CELL      = Math.floor(SIDEBAR_W / COLS);
         const ICON_SIZE = 44;
         const GRID_TOP  = 36;
-
-        this._sidebarIcons = [];
 
         Object.keys(this.towerData).forEach((type, index) => {
             const data  = this.towerData[type];
@@ -238,13 +191,13 @@ export default class MainScene extends Phaser.Scene {
 
             icon.on('pointerover', () => { icon.setTint(0xaaddff); cellBg.setFillStyle(0x2a2a4e); });
             icon.on('pointerout',  () => { icon.clearTint();        cellBg.setFillStyle(0x1a1a2e); });
-
             icon.towerType = type;
-            this._sidebarIcons.push(icon);
         });
 
-        // ── DRAG SYSTEM ───────────────────────────────────────────────
+        // ── DRAG SYSTEM (raw pointer — instant, no threshold) ─────────
         this._drag = null;
+        const GRID_SIZE  = this.gridSize;
+        const GHOST_SIZE = GRID_SIZE * 0.8;
 
         this.input.on('pointerdown', (pointer, targets) => {
             const icon = targets.find(t => t.towerType);
@@ -274,9 +227,8 @@ export default class MainScene extends Phaser.Scene {
                 const sx = Math.round(pointer.x / GRID_SIZE) * GRID_SIZE;
                 const sy = Math.round(pointer.y / GRID_SIZE) * GRID_SIZE;
                 ghost.setPosition(sx, sy);
-                const i  = Math.floor(pointer.y / GRID_SIZE);
-                const j  = Math.floor(pointer.x / GRID_SIZE);
-                const ok = this.canPlaceTurret(i, j) && this.money >= data.cost;
+
+                const ok = this.pathManager.canPlace(sx, sy) && this.money >= data.cost;
                 ghost.setTint(ok ? 0xffffff : 0xff4444).setAlpha(ok ? 0.85 : 0.5);
             } else {
                 ghost.setPosition(pointer.x, pointer.y).setTint(0xff4444).setAlpha(0.5);
@@ -288,14 +240,14 @@ export default class MainScene extends Phaser.Scene {
             const { type, data, ghost } = this._drag;
 
             if (pointer.x < sidebarX) {
-                const i = Math.floor(pointer.y / GRID_SIZE);
-                const j = Math.floor(pointer.x / GRID_SIZE);
+                const sx = Math.round(pointer.x / GRID_SIZE) * GRID_SIZE;
+                const sy = Math.round(pointer.y / GRID_SIZE) * GRID_SIZE;
 
-                if (this.canPlaceTurret(i, j) && this.money >= data.cost) {
+                if (this.pathManager.canPlace(sx, sy) && this.money >= data.cost) {
                     const turret = new Turret(this, type);
                     this.turrets.add(turret);
-                    turret.place(i, j);
                     turret.bulletType = data.bulletType;
+                    turret.setPosition(sx, sy);
 
                     this.money -= data.cost;
                     this.moneyText.setText(`💰 $${this.money}`);
@@ -317,7 +269,39 @@ export default class MainScene extends Phaser.Scene {
         this.upgradeUI = new TowerUpgradeUI(this);
 
         // ── WAVE MANAGER ──────────────────────────────────────────────
-        this.waveManager = new WaveManager(this, this.enemies, this.path);
+        this.waveManager = new WaveManager(this, this.enemies, this.path, this.difficulty);
+
+        // ── PAUSE MENU ────────────────────────────────────────────────
+        this.isPaused = false;
+
+        this.pauseContainer = this.add.container(screenW / 2, screenH / 2).setDepth(10000);
+
+        const panel     = this.add.rectangle(0, 0, 300, 200, 0x000000, 0.85).setStrokeStyle(2, 0x4ecca3);
+        const resumeBtn = this.add.text(0, -40, 'Resume', {
+            fontSize: '28px', fontFamily: 'monospace', color: '#ffffff'
+        }).setOrigin(0.5).setInteractive()
+          .on('pointerover', function () { this.setStyle({ color: '#4ecca3' }); })
+          .on('pointerout',  function () { this.setStyle({ color: '#ffffff' }); })
+          .on('pointerdown', () => this.resumeGame());
+
+        const exitBtn = this.add.text(0, 40, 'Exit to Menu', {
+            fontSize: '28px', fontFamily: 'monospace', color: '#ffffff'
+        }).setOrigin(0.5).setInteractive()
+          .on('pointerover', function () { this.setStyle({ color: '#ff6666' }); })
+          .on('pointerout',  function () { this.setStyle({ color: '#ffffff' }); })
+          .on('pointerdown', () => {
+              this.scene.stop('MainScene');
+              this.scene.start('MenuScene');
+          });
+
+        this.pauseContainer.add([panel, resumeBtn, exitBtn]);
+        this.pauseContainer.setVisible(false);
+
+        // ESC toggles pause
+        this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+        this.escapeKey.on('down', () => {
+            this.isPaused ? this.resumeGame() : this.pauseGame();
+        });
     }
 
     // ── UPDATE ────────────────────────────────────────────────────────
@@ -328,33 +312,20 @@ export default class MainScene extends Phaser.Scene {
         this.waveManager.update(time, delta);
 
         this.enemies.getChildren().forEach(e => {
-            if (e.active) e.update(time, delta, this.path);
+            if (e.active) e.update(time, delta, this.path, this.isPaused);
+        });
+        this.bullets.getChildren().forEach(b => {
+            if (b.active) b.update(time, delta);
         });
         this.turrets.getChildren().forEach(t => {
             if (t.active) t.update(time, delta);
         });
 
-        if (Phaser.Input.Keyboard.JustDown(this.keyF2)) this.pathManager?.toggleBlocked();
-        if (Phaser.Input.Keyboard.JustDown(this.keyF3)) this.pathManager?.togglePath();
+        if (Phaser.Input.Keyboard.JustDown(this.keyF2)) this.pathManager.toggleBlocked();
+        if (Phaser.Input.Keyboard.JustDown(this.keyF3)) this.pathManager.togglePath();
     }
 
     // ── HELPERS ───────────────────────────────────────────────────────
-
-    isNearPath(x, y) {
-        if (!this.path) return false;
-        return this.path.getPoints(300).some(p =>
-            Phaser.Math.Distance.Between(x, y, p.x, p.y) < 48
-        );
-    }
-
-    canPlaceTurret(i, j) {
-        const grid = this.gridSize || 64;
-        const x = j * grid + grid / 2;
-        const y = i * grid + grid / 2;
-        if (x + grid / 2 > this.cameras.main.width - 200) return false;
-        if (this.isNearPath(x, y)) return false;
-        return true;
-    }
 
     getEnemyInRange(x, y, range) {
         return this.enemies.getChildren().find(e =>
@@ -362,38 +333,49 @@ export default class MainScene extends Phaser.Scene {
         ) || null;
     }
 
-    spawnBullet(turret, x, y, angle, opts = {}) {
-        const group  = turret.bulletType === 'firebullet' ? this.fireBullets : this.bullets;
-        const bullet = group.get();
+ 
+spawnBullet(turret, x, y, angle, opts = {}) {
+    const damage = opts.damage ?? turret.damage;
+
+    if (turret.bulletType === 'firebullet') {
+        const bullet = this.fireBullets.get();
         if (!bullet) return;
-
-        bullet.init(turret.bulletType, { speed: 2000 });
-        bullet.fire(x, y, angle, opts.damage ?? turret.damage);
+        bullet.init('firebullet', { speed: 600 });
+        bullet.fire(x, y, angle, damage);
+    } else if (turret.bulletType === 'icebullet') {
+        const bullet = this.iceBullets.get();
+        if (!bullet) return;
+        bullet.fire(x, y, angle, damage);
+    } else {
+        const bullet = this.bullets.get();
+        if (!bullet) return;
+        bullet.fire(x, y, angle, damage);
     }
-
-    damageEnemy(enemy, bullet) {
-        if (!enemy.active || !bullet.active) return;
-
-        enemy.receiveDamage(bullet.damage);
-
-        if (bullet.textureKey === 'firebullet') {
-            this.enemies.getChildren().forEach(e => {
-                if (!e.active || e === enemy) return;
-                if (Phaser.Math.Distance.Between(enemy.x, enemy.y, e.x, e.y) <= 80)
-                    e.receiveDamage(Math.floor(bullet.damage * 0.5));
-            });
-        }
-
-        bullet.deactivate();
+}
+ 
+damageEnemy(enemy, bullet) {
+    if (!enemy.active || !bullet.active) return;
+ 
+    enemy.receiveDamage(bullet.damage);
+ 
+    if (bullet.texture?.key === 'firebullet') {
+        this.enemies.getChildren().forEach(e => {
+            if (!e.active || e === enemy) return;
+            if (Phaser.Math.Distance.Between(enemy.x, enemy.y, e.x, e.y) <= 80)
+                e.receiveDamage(Math.floor(bullet.damage * 0.5));
+        });
+        bullet.deactivate?.();
+    } else {
+        bullet.disableBody(true, true);
     }
-
+}
     addGold(amount) {
         this.money += amount;
         this.moneyText?.setText(`💰 $${this.money}`);
     }
 
     loseLives(amount) {
-        this.lives = Math.max(0, (this.lives || 0) - amount);
+        this.lives = Math.max(0, this.lives - amount);
         this.livesText?.setText(`❤ ${this.lives}`);
         if (this.lives === 0) this.gameOver();
     }
@@ -413,7 +395,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     startNextRound() {
-        this.startButton.setVisible(false);
+        this.roundButton.setVisible(false);
         this.waveManager.startNextWave();
     }
 
@@ -422,7 +404,7 @@ export default class MainScene extends Phaser.Scene {
         this.physics.world.pause();
         this.waveManager?.pauseWaves?.();
         this.time.paused = true;
-        this.pauseContainer?.setVisible(true);
+        this.pauseContainer.setVisible(true);
     }
 
     resumeGame() {
@@ -430,6 +412,6 @@ export default class MainScene extends Phaser.Scene {
         this.physics.world.resume();
         this.waveManager?.resumeWaves?.();
         this.time.paused = false;
-        this.pauseContainer?.setVisible(false);
+        this.pauseContainer.setVisible(false);
     }
 }

@@ -1,5 +1,6 @@
 import FastEnemy from '../objects/FastEnemy.js';
 import Enemy from '../objects/Enemy.js';
+import IronGolem from '../objects/IronGolem.js';
 
 export default class WaveManager {
     constructor(scene, enemies, path, difficulty = 'NORMAL') {
@@ -17,9 +18,6 @@ export default class WaveManager {
         this.activeEvents = [];
     }
 
-    // -------------------------------------------------------
-    // DIFFICULTY WAVES
-    // -------------------------------------------------------
     getWavesForDifficulty(diff) {
 
         if (diff === "EASY") {
@@ -39,50 +37,66 @@ export default class WaveManager {
                 },
                 {
                     pattern: [
-                        { delay: 0, type: 'basic', count: 20, rate: 350 },
-                        { delay: 4000, type: 'fast', count: 10, rate: 300 }
+                        { delay: 0,    type: 'basic', count: 20, rate: 350 },
+                        { delay: 4000, type: 'fast',  count: 10, rate: 300 }
+                    ]
+                },
+                {
+                    // Wave 3 — first golem appearance
+                    pattern: [
+                        { delay: 0,    type: 'basic', count: 20, rate: 300 },
+                        { delay: 2000, type: 'fast',  count: 10, rate: 250 },
+                        { delay: 5000, type: 'golem', count: 2,  rate: 800 }
                     ]
                 },
                 {
                     pattern: [
-                        { delay: 0, type: 'basic', count: 30, rate: 300 },
-                        { delay: 2000, type: 'fast', count: 15, rate: 200 }
+                        { delay: 0,    type: 'basic', count: 30, rate: 300 },
+                        { delay: 2000, type: 'fast',  count: 15, rate: 200 },
+                        { delay: 5000, type: 'golem', count: 3,  rate: 800 }
                     ]
                 },
                 {
                     pattern: [
-                        { delay: 0, type: 'basic', count: 10, rate: 0 },
-                        { delay: 2000, type: 'fast', count: 20, rate: 250 }
+                        { delay: 0,    type: 'basic', count: 10, rate: 0   },
+                        { delay: 2000, type: 'fast',  count: 20, rate: 250 },
+                        { delay: 4000, type: 'golem', count: 4,  rate: 700 }
                     ]
                 }
             ];
         }
 
+        // HARD
         return [
             {
                 pattern: [
-                    { delay: 0, type: 'basic', count: 10, rate: 350 },
-                    { delay: 1500, type: 'fast', count: 10, rate: 250 }
+                    { delay: 0,    type: 'basic', count: 10, rate: 350 },
+                    { delay: 1500, type: 'fast',  count: 10, rate: 250 }
                 ]
             },
             {
                 pattern: [
-                    { delay: 0, type: 'basic', count: 20, rate: 300 },
-                    { delay: 2000, type: 'fast', count: 15, rate: 200 }
+                    { delay: 0,    type: 'basic', count: 20, rate: 300 },
+                    { delay: 2000, type: 'fast',  count: 15, rate: 200 }
+                ]
+            },
+            {
+                // Wave 3 hard — golem intro with more pressure
+                pattern: [
+                    { delay: 0,    type: 'basic', count: 25, rate: 250 },
+                    { delay: 1500, type: 'fast',  count: 20, rate: 180 },
+                    { delay: 4000, type: 'golem', count: 3,  rate: 700 }
                 ]
             },
             {
                 pattern: [
-                    { delay: 0, type: 'basic', count: 25, rate: 250 },
-                    { delay: 1500, type: 'fast', count: 20, rate: 180 }
+                    { delay: 0,    type: 'fast',  count: 20, rate: 200 },
+                    { delay: 2000, type: 'golem', count: 5,  rate: 600 }
                 ]
             }
         ];
     }
 
-    // -------------------------------------------------------
-    // START WAVE
-    // -------------------------------------------------------
     startNextWave() {
         if (!this.waveFinished && this.currentWaveIndex >= 0) return;
 
@@ -102,17 +116,16 @@ export default class WaveManager {
 
         wave.pattern.forEach(event => {
             this.activeEvents.push({
-                delay: event.delay,
-                type: event.type,
-                remaining: event.count,
-                rate: event.rate,
+                delay:       event.delay,
+                type:        event.type,
+                remaining:   event.count,
+                rate:        event.rate,
                 nextSpawnIn: event.rate,
-                started: false,
-                finished: false
+                started:     false,
+                finished:    false
             });
         });
 
-        // Hide + disable button safely
         if (this.scene.roundButton) {
             this.scene.roundButton.setVisible(false);
             this.scene.roundButton.setActive(false);
@@ -126,9 +139,6 @@ export default class WaveManager {
         console.log(`Starting wave ${this.currentWaveIndex + 1}`);
     }
 
-    // -------------------------------------------------------
-    // UPDATE LOOP
-    // -------------------------------------------------------
     update(time, delta) {
         if (this.currentWaveIndex < 0) return;
 
@@ -177,21 +187,20 @@ export default class WaveManager {
             }
         }
 
-        // ✅ FIXED SAFETY CHECK
         if (!this.waveFinished && allEventsFinished && this.enemiesAlive === 0) {
             this.onWaveComplete();
         }
     }
 
-    // -------------------------------------------------------
-    // SPAWN ENEMY
-    // -------------------------------------------------------
     spawnEnemy(type) {
         let enemy;
 
         switch (type) {
             case 'fast':
                 enemy = new FastEnemy(this.scene);
+                break;
+            case 'golem':
+                enemy = new IronGolem(this.scene);
                 break;
             case 'basic':
             default:
@@ -211,22 +220,20 @@ export default class WaveManager {
             this.enemiesAlive--;
         };
     }
+
     setRoundButtonVisible(state) {
-    if (!this.scene.roundButton) return;
+        if (!this.scene.roundButton) return;
 
-    this.scene.roundButton.setVisible(state);
+        this.scene.roundButton.setVisible(state);
 
-    if (state) {
-        this.scene.roundButton.setActive(true);
-        this.scene.roundButton.setInteractive();
-    } else {
-        this.scene.roundButton.setActive(false);
+        if (state) {
+            this.scene.roundButton.setActive(true);
+            this.scene.roundButton.setInteractive();
+        } else {
+            this.scene.roundButton.setActive(false);
+        }
     }
-}
 
-    // -------------------------------------------------------
-    // WAVE COMPLETE
-    // -------------------------------------------------------
     onWaveComplete() {
         if (this.waveFinished) return;
 

@@ -1,24 +1,57 @@
 {
   "frames": {
-    "enemy": {
-      "frame": { "x": 0, "y": 0, "w": 32, "h": 32 }
+    "lightningtower": {
+      "frame": { "x": 82,   "y": 218, "w": 187, "h": 262 },
+      "rotated": false, "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 187, "h": 262 },
+      "sourceSize": { "w": 187, "h": 262 }
     },
-    "fastEnemy": {
-      "frame": { "x": 32, "y": 0, "w": 32, "h": 32 }
+    "icetower": {
+      "frame": { "x": 386,  "y": 218, "w": 169, "h": 262 },
+      "rotated": false, "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 169, "h": 262 },
+      "sourceSize": { "w": 169, "h": 262 }
     },
-    "turret": {
-      "frame": { "x": 64, "y": 0, "w": 32, "h": 32 }
+    "firetower": {
+      "frame": { "x": 644,  "y": 218, "w": 170, "h": 262 },
+      "rotated": false, "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 170, "h": 262 },
+      "sourceSize": { "w": 170, "h": 262 }
     },
-    "cannon": {
-      "frame": { "x": 96, "y": 0, "w": 32, "h": 32 }
+    "rocktower": {
+      "frame": { "x": 876,  "y": 218, "w": 225, "h": 262 },
+      "rotated": false, "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 225, "h": 262 },
+      "sourceSize": { "w": 225, "h": 262 }
     },
-    "bullet": {
-      "frame": { "x": 128, "y": 0, "w": 16, "h": 16 }
+    "darktower": {
+      "frame": { "x": 1174, "y": 218, "w": 192, "h": 262 },
+      "rotated": false, "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 192, "h": 262 },
+      "sourceSize": { "w": 192, "h": 262 }
+    },
+    "lighttower": {
+      "frame": { "x": 1439, "y": 218, "w": 189, "h": 262 },
+      "rotated": false, "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 189, "h": 262 },
+      "sourceSize": { "w": 189, "h": 262 }
+    },
+    "psychictower": {
+      "frame": { "x": 1699, "y": 218, "w": 172, "h": 262 },
+      "rotated": false, "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 172, "h": 262 },
+      "sourceSize": { "w": 172, "h": 262 }
+    },
+    "windtower": {
+      "frame": { "x": 1940, "y": 218, "w": 164, "h": 262 },
+      "rotated": false, "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 164, "h": 262 },
+      "sourceSize": { "w": 164, "h": 262 }
     }
   },
   "meta": {
-    "image": "spritesheet.png",
-    "size": { "w": 160, "h": 32 },
+    "image": "spritesheet2.png",
+    "size": { "w": 2172, "h": 724 },
     "scale": "1"
   }
 }
