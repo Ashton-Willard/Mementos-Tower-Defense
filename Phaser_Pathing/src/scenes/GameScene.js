@@ -1,3 +1,5 @@
+import { saveManager } from '../systems/SaveManager.js';
+
 export default class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
@@ -11,8 +13,8 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('back_arrow', 'src/assets/ui/back_arrow_red.png');
 
         // Placeholder map images
-        this.load.image('map1', 'src/assets/maps/map1_placeholder.png');
-        this.load.image('map2', 'src/assets/maps/map2_placeholder.png');
+        this.load.image('map1', 'src/assets/maps/map1.png');
+        this.load.image('map2', 'src/assets/maps/BloonsCutMap1.png');
     }
 
     create() {
@@ -30,6 +32,51 @@ export default class GameScene extends Phaser.Scene {
             0x000000,
             0.45
         );
+
+        // ============================================================
+        // AUTHENTICATION: LOGOUT BUTTON (Top-right corner)
+        // ============================================================
+        const logoutBtn = this.add.text(
+            this.scale.width - 80,
+            80,
+            'LOGOUT',
+            {
+                fontFamily: 'Arial',
+                fontSize: '28px',
+                color: '#ff2a2a',
+                stroke: '#000000',
+                strokeThickness: 6
+            }
+        )
+        .setOrigin(1, 0.5)
+        .setInteractive({ useHandCursor: true });
+
+        logoutBtn.on('pointerover', () => {
+            this.tweens.add({ targets: logoutBtn, scale: 1.1, duration: 120, ease: 'Quad.easeOut' });
+        });
+
+        logoutBtn.on('pointerout', () => {
+            this.tweens.add({ targets: logoutBtn, scale: 1, duration: 120, ease: 'Quad.easeOut' });
+        });
+
+        logoutBtn.on('pointerdown', async () => {
+            // Lazy-load Firebase Auth
+            const { signOut } = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js");
+            const { auth } = await import("../systems/firebase.js");
+
+            await signOut(auth);
+
+            // Re-show the login wrapper (HTML)
+            const wrapper = document.getElementById("auth-wrapper");
+            if (wrapper) wrapper.style.display = "flex";
+
+            // Reset flag so login screen shows next time
+            localStorage.removeItem("gameAlreadyOpened");
+
+            // Go back to AuthScene
+            this.scene.start("AuthScene");
+        });
+
 
         // Floating enemy showcase
         const enemy = this.add.image(
@@ -193,7 +240,7 @@ export default class GameScene extends Phaser.Scene {
         let selectedMapIndex = 0;
 
         const mapKeys = ['map1', 'map2'];
-        const mapNames = ['CORRIDOR OF SHADOWS', 'MAP 2'];
+        const mapNames = ['CORRIDOR OF SHADOWS', 'STONE WAY'];
 
         // START BUTTON
         const startButton = this.add.text(
