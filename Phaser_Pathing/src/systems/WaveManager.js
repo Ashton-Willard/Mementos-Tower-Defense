@@ -8,31 +8,28 @@ export default class WaveManager {
         this.path = path;
         this.difficulty = difficulty;
 
-        // Load waves based on difficulty
         this.waves = this.getWavesForDifficulty(difficulty);
 
         this.currentWaveIndex = -1;
         this.waveTime = 0;
-        this.waveFinished = false;
+        this.waveFinished = true;
         this.enemiesAlive = 0;
         this.activeEvents = [];
     }
 
     // -------------------------------------------------------
-    // DIFFICULTY WAVE SETS
+    // DIFFICULTY WAVES
     // -------------------------------------------------------
     getWavesForDifficulty(diff) {
 
-        // EASY — ONLY FAST ENEMIES
         if (diff === "EASY") {
             return [
-                { pattern: [ { delay: 0, type: 'fast', count: 10, rate: 400 } ] },
-                { pattern: [ { delay: 0, type: 'fast', count: 15, rate: 350 } ] },
-                { pattern: [ { delay: 0, type: 'fast', count: 20, rate: 300 } ] }
+                { pattern: [{ delay: 0, type: 'fast', count: 10, rate: 400 }] },
+                { pattern: [{ delay: 0, type: 'fast', count: 15, rate: 350 }] },
+                { pattern: [{ delay: 0, type: 'fast', count: 20, rate: 300 }] }
             ];
         }
 
-        // NORMAL — YOUR ORIGINAL WAVES
         if (diff === "NORMAL") {
             return [
                 {
@@ -42,26 +39,25 @@ export default class WaveManager {
                 },
                 {
                     pattern: [
-                        { delay: 0,    type: 'basic', count: 20, rate: 350 },
-                        { delay: 4000, type: 'fast',  count: 10, rate: 300 }
+                        { delay: 0, type: 'basic', count: 20, rate: 350 },
+                        { delay: 4000, type: 'fast', count: 10, rate: 300 }
                     ]
                 },
                 {
                     pattern: [
-                        { delay: 0,    type: 'basic', count: 30, rate: 300 },
-                        { delay: 2000, type: 'fast',  count: 15, rate: 200 }
+                        { delay: 0, type: 'basic', count: 30, rate: 300 },
+                        { delay: 2000, type: 'fast', count: 15, rate: 200 }
                     ]
                 },
                 {
                     pattern: [
-                        { delay: 0,    type: 'basic', count: 10, rate: 0 },
-                        { delay: 2000, type: 'fast',  count: 20, rate: 250 }
+                        { delay: 0, type: 'basic', count: 10, rate: 0 },
+                        { delay: 2000, type: 'fast', count: 20, rate: 250 }
                     ]
                 }
             ];
         }
 
-        // HARD — MIXED FROM WAVE 1
         return [
             {
                 pattern: [
@@ -85,13 +81,15 @@ export default class WaveManager {
     }
 
     // -------------------------------------------------------
-    // START NEXT WAVE
+    // START WAVE
     // -------------------------------------------------------
     startNextWave() {
+        if (!this.waveFinished && this.currentWaveIndex >= 0) return;
+
         this.currentWaveIndex++;
 
         if (this.currentWaveIndex >= this.waves.length) {
-            console.log('All waves complete');
+            console.log("All waves complete");
             return;
         }
 
@@ -114,8 +112,15 @@ export default class WaveManager {
             });
         });
 
+        // Hide + disable button safely
         if (this.scene.roundButton) {
             this.scene.roundButton.setVisible(false);
+            this.scene.roundButton.setActive(false);
+        }
+
+        if (this.scene.startButton) {
+            this.scene.startButton.setVisible(false);
+            this.scene.startButton.setActive(false);
         }
 
         console.log(`Starting wave ${this.currentWaveIndex + 1}`);
@@ -172,7 +177,8 @@ export default class WaveManager {
             }
         }
 
-        if (allEventsFinished && this.enemiesAlive === 0) {
+        // ✅ FIXED SAFETY CHECK
+        if (!this.waveFinished && allEventsFinished && this.enemiesAlive === 0) {
             this.onWaveComplete();
         }
     }
@@ -184,9 +190,13 @@ export default class WaveManager {
         let enemy;
 
         switch (type) {
-            case 'fast': enemy = new FastEnemy(this.scene); break;
+            case 'fast':
+                enemy = new FastEnemy(this.scene);
+                break;
             case 'basic':
-            default:     enemy = new Enemy(this.scene); break;
+            default:
+                enemy = new Enemy(this.scene);
+                break;
         }
 
         this.enemies.add(enemy);
@@ -201,12 +211,25 @@ export default class WaveManager {
             this.enemiesAlive--;
         };
     }
+    setRoundButtonVisible(state) {
+    if (!this.scene.roundButton) return;
+
+    this.scene.roundButton.setVisible(state);
+
+    if (state) {
+        this.scene.roundButton.setActive(true);
+        this.scene.roundButton.setInteractive();
+    } else {
+        this.scene.roundButton.setActive(false);
+    }
+}
 
     // -------------------------------------------------------
     // WAVE COMPLETE
     // -------------------------------------------------------
     onWaveComplete() {
         if (this.waveFinished) return;
+
         this.waveFinished = true;
 
         console.log(`Wave ${this.currentWaveIndex + 1} complete`);
@@ -215,7 +238,11 @@ export default class WaveManager {
         this.scene.addGold(bonus);
 
         if (this.currentWaveIndex < this.waves.length - 1) {
-            this.scene.roundButton.setVisible(true);
+            if (this.scene.roundButton) {
+                this.scene.roundButton.setVisible(true);
+                this.scene.roundButton.setActive(true);
+                this.scene.roundButton.setInteractive();
+            }
         }
     }
 }

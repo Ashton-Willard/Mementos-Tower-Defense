@@ -184,6 +184,7 @@ export default class MainScene extends Phaser.Scene {
             const type = gameObject.towerType;
             const data = this.towerData[type];
 
+
             if (this.money < data.cost) return;
 
             this.draggingType = type;
@@ -318,8 +319,14 @@ export default class MainScene extends Phaser.Scene {
     }
 
     getEnemyInRange(x, y, range) {
-        return this.enemies.getChildren().find(e =>
-            e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= range
+        return this.enemies.getChildren().find(enemy =>
+            enemy.active &&
+            Phaser.Math.Distance.Between(
+                x,
+                y,
+                enemy.x,
+                enemy.y
+            ) <= range
         ) || null;
     }
 
@@ -369,30 +376,35 @@ export default class MainScene extends Phaser.Scene {
         .setScrollFactor(0);
     }
 
-
     pauseGame() {
-    this.isPaused = true;
+        this.isPaused = true;
 
-    // Pause gameplay systems ONLY
-    this.physics.world.pause();
-    if (this.waveManager) this.waveManager.pauseWaves?.();
-    this.time.paused = true;
+        this.physics.world.pause();
 
-    // Show pause menu
-    this.pauseContainer.setVisible(true);
+        if (this.waveManager) {
+            this.waveManager.pauseWaves?.();
+        }
+
+        this.time.paused = true;
+
+        if (this.pauseContainer) {
+            this.pauseContainer.setVisible(true);
+        }
     }
 
     resumeGame() {
         this.isPaused = false;
 
-        // Resume gameplay systems
         this.physics.world.resume();
-        if (this.waveManager) this.waveManager.resumeWaves?.();
+
+        if (this.waveManager) {
+            this.waveManager.resumeWaves?.();
+        }
+
         this.time.paused = false;
 
-        // Hide pause menu
-        this.pauseContainer.setVisible(false);
+        if (this.pauseContainer) {
+            this.pauseContainer.setVisible(false);
+        }
     }
-
-
 }
