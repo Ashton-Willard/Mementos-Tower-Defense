@@ -1,9 +1,9 @@
 import Enemy from '../objects/Enemy.js';
-import FastEnemy from '../objects/FastEnemy.js';
 import Turret from '../objects/Turret.js';
 import Bullet from '../objects/Bullet.js';
+import FireBullet from '../objects/FireBullet.js';
 import WaveManager from '../systems/WaveManager.js';
-import PathManager from '../systems/PathManager.js';
+import TowerUpgradeUI from './TowerUpgradeUI.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -11,351 +11,391 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('bullet', 'src/assets/bullet.png');
-
+        this.load.image('bullet',     'src/assets/bullet.png');
+        this.load.image('firebullet', 'src/assets/firebullet.png');
+        this.load.image('tiles',      'src/assets/tiles.png');
         this.load.tilemapTiledJSON('map1', 'src/assets/maps/map1.tmj');
-        this.load.tilemapTiledJSON('map2', 'src/assets/maps/Map2.tmj');
-
-        this.load.image('BloonsCutMap1.png', 'src/assets/maps/BloonsCutMap1.png');
-        this.load.image('tiles', 'src/assets/tiles.png');
-
-        this.load.image('enemy_shadow', 'src/assets/enemies/enemy_shadow.png');
-
-        this.load.spritesheet('turret', 'src/assets/spritesheet.png', {
-            frameWidth: 66,
-            frameHeight: 50 
-        });
+        this.load.image('enemy',      'src/assets/enemy.png');
+        this.load.atlas('turret', 'src/assets/spritesheet2.png', 'src/assets/spritesheet.json');
     }
 
     create(data) {
-        this.difficulty = data?.difficulty || 'NORMAL';
-        this.selectedMap = data?.map || 'map1';
+        // ── SCENE DATA ────────────────────────────────────────────────
+        this.difficulty  = data?.difficulty || 'NORMAL';
+        this.selectedMap = data?.map        || 'map1';
+        console.log('Difficulty:', this.difficulty, '| Map:', this.selectedMap);
 
-        console.log("Difficulty:", this.difficulty);
-        console.log("Selected Map:", this.selectedMap);
-
+        // ── DEBUG KEYS ────────────────────────────────────────────────
         this.keyF2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F2);
         this.keyF3 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F3);
 
-        const screenW = this.scale.width;
-        const screenH = this.scale.height;
+        const CAM_W     = this.cameras.main.width;
+        const CAM_H     = this.cameras.main.height;
+        const SIDEBAR_W = 200;
+        const GAME_W    = CAM_W - SIDEBAR_W;
+        const sidebarX  = GAME_W;
+        const TILE_SIZE = 32;
 
-        this.sidebarWidth = screenW * 0.20;
-        this.playWidth = screenW - this.sidebarWidth;
+        // ── TILEMAP ───────────────────────────────────────────────────
+        const map     = this.make.tilemap({ key: 'map1' });
+        const tileset = map.addTilesetImage('Testing_Tileset', 'tiles');
 
+        const baseLayer = map.createLayer('Tile Layer 1', tileset, 0, 0);
+        const pathLayer = map.createLayer('Pathing',      tileset, 0, 0);
+        pathLayer.setVisible(true);
+
+        const mapWidth   = map.widthInPixels;
+        const mapHeight  = map.heightInPixels;
+        const mapScale   = Math.min(GAME_W / mapWidth, CAM_H / mapHeight);
+        const mapOffsetX = Math.round((GAME_W - mapWidth  * mapScale) / 2);
+        const mapOffsetY = Math.round((CAM_H  - mapHeight * mapScale) / 2);
+
+        baseLayer.setScale(mapScale).setPosition(mapOffsetX, mapOffsetY);
+        pathLayer.setScale(mapScale).setPosition(mapOffsetX, mapOffsetY);
+
+        // ── PATH FROM TILEMAP (BFS on tile index 48) ──────────────────
+        const worldFromTile = (tx, ty) => [
+            mapOffsetX + map.tileToWorldX(tx) * mapScale + (TILE_SIZE * mapScale) / 2,
+            mapOffsetY + map.tileToWorldY(ty) * mapScale + (TILE_SIZE * mapScale) / 2
+        ];
+
+        const PATH_TILE_INDEX = 48;
+        const pathTiles = [];
+        pathLayer.forEachTile(tile => {
+            if (tile.index === PATH_TILE_INDEX) pathTiles.push(tile);
+        });
+
+        const tileKey      = tile => `${tile.x},${tile.y}`;
+        const pathTileByKey = new Map(pathTiles.map(tile => [tileKey(tile), tile]));
+
+        const getNeighbors = tile => [
+            { dx:  0, dy:  1 }, { dx: -1, dy:  0 },
+            { dx:  1, dy:  0 }, { dx:  0, dy: -1 }
+        ]
+        .map(({ dx, dy }) => pathTileByKey.get(`${tile.x + dx},${tile.y + dy}`))
+        .filter(Boolean);
+
+        const START_TX = 2,  START_TY = 19;
+        const END_TX   = 29, END_TY   = 15;
+
+        const startTile = pathTileByKey.get(`${START_TX},${START_TY}`);
+        const endTile   = pathTileByKey.get(`${END_TX},${END_TY}`);
+
+        if (!startTile) console.warn(`Start tile (${START_TX},${START_TY}) not found`);
+        if (!endTile)   console.warn(`End tile (${END_TX},${END_TY}) not found`);
+
+        let orderedTiles = [];
+
+        if (startTile && endTile) {
+            const queue    = [startTile];
+            const cameFrom = new Map([[tileKey(startTile), null]]);
+            let foundEnd   = false;
+
+            while (queue.length && !foundEnd) {
+                const current = queue.shift();
+                if (current === endTile) { foundEnd = true; break; }
+                for (const nb of getNeighbors(current)) {
+                    const k = tileKey(nb);
+                    if (cameFrom.has(k)) continue;
+                    cameFrom.set(k, current);
+                    queue.push(nb);
+                }
+            }
+
+            if (foundEnd) {
+                let cursor = endTile;
+                while (cursor) {
+                    orderedTiles.push(cursor);
+                    cursor = cameFrom.get(tileKey(cursor));
+                }
+                orderedTiles.reverse();
+                console.log(`Path: ${orderedTiles.length} tiles`);
+            } else {
+                console.warn('BFS failed — check START/END tile coords');
+            }
+        }
+
+        if (orderedTiles.length < 2) {
+            console.warn('Using fallback 2-point path');
+            this.pathPoints = [
+                ...worldFromTile(START_TX, START_TY),
+                ...worldFromTile(END_TX,   END_TY)
+            ];
+        } else {
+            this.pathPoints = orderedTiles.map(tile => worldFromTile(tile.x, tile.y)).flat();
+        }
+
+        if (this.pathPoints.length >= 2) {
+            this.path = this.add.path(this.pathPoints[0], this.pathPoints[1]);
+            for (let i = 2; i < this.pathPoints.length; i += 2) {
+                this.path.lineTo(this.pathPoints[i], this.pathPoints[i + 1]);
+            }
+        } else {
+            this.path = this.add.path(0, 0);
+            console.warn('Path generation failed: not enough path points');
+        }
+
+        const GRID_SIZE  = TILE_SIZE * mapScale;
+        const GHOST_SIZE = 48    * mapScale;
+        this.gridSize    = GRID_SIZE;
+
+        // ── HUD ───────────────────────────────────────────────────────
         this.money = 500;
-        this.lives = 100;
 
-        this.moneyText = this.add.text(20, 60, `Money: $${this.money}`, {
-            fontSize: "20px",
-            color: "#00ff00"
+        this.moneyText = this.add.text(16, 54, `💰 $${this.money}`, {
+            fontSize: '18px', fontFamily: 'monospace',
+            color: '#f0c040', stroke: '#000000', strokeThickness: 4
         }).setScrollFactor(0).setDepth(9999);
 
-        this.livesText = this.add.text(20, 110, `Lives: ${this.lives}`, {
-            fontSize: "24px",
-            color: "#ffff00",
-            backgroundColor: "#000000",
-            padding: { x: 10, y: 5 }
-        }).setScrollFactor(0).setDepth(9999);
-
-        this.roundButton = this.add.text(20, 20, "Start Wave", {
-            fontSize: "24px",
-            color: "#ffffff",
-            backgroundColor: "#000000",
-            padding: { x: 10, y: 5 }
+        this.startButton = this.add.text(16, 16, '▶  Start Wave', {
+            fontSize: '18px', fontFamily: 'monospace',
+            color: '#ffffff', stroke: '#000000', strokeThickness: 5,
+            backgroundColor: '#1a1a2e', padding: { x: 12, y: 6 }
         })
         .setInteractive()
-        .on('pointerdown', () => {
-            this.roundButton.setVisible(false);
-            this.waveManager.startNextWave();
-        })
-        .setDepth(9999)
-        .setScrollFactor(0);
+        .on('pointerover', function () { this.setStyle({ color: '#4ecca3' }); })
+        .on('pointerout',  function () { this.setStyle({ color: '#ffffff' }); })
+        .on('pointerdown', () => this.startNextRound())
+        .setDepth(9999).setScrollFactor(0);
 
-        // MAP
-        this.map = this.make.tilemap({ key: this.selectedMap });
-        const tileset = this.map.addTilesetImage('Testing_Tileset', 'tiles');
+        // ── PAUSE STATE ───────────────────────────────────────────────
+        this.isPaused = false;
+        // Build pauseContainer here if you have a pause UI, e.g.:
+        // this.pauseContainer = this.add.container(...).setVisible(false);
 
-        const scaleX = this.playWidth / this.map.widthInPixels;
-        const scaleY = screenH / this.map.heightInPixels;
-        const mapScale = Math.max(scaleX, scaleY);
+        // ── GROUPS ────────────────────────────────────────────────────
+        this.enemies     = this.physics.add.group({ classType: Enemy });
+        this.bullets     = this.physics.add.group({ classType: Bullet,     runChildUpdate: false });
+        this.fireBullets = this.physics.add.group({ classType: FireBullet, runChildUpdate: false });
+        this.turrets     = this.add.group();
 
-        // BACKGROUND IMAGE FOR MAP2 (from imagelayer or direct)
-        if (this.selectedMap === 'map2') {
-            // If using imagelayer in TMJ, you can instead iterate map.layers.
-            const img = this.add.image(0, 0, 'BloonsCutMap1.png')
-                .setOrigin(0)
-                .setDepth(-10)
-                .setScale(mapScale);
+        this.physics.add.overlap(this.enemies, this.bullets,     this.damageEnemy, null, this);
+        this.physics.add.overlap(this.enemies, this.fireBullets, this.damageEnemy, null, this);
 
-            // If you want to match TMJ offsets exactly, tweak here:
-            img.x += -17.3333333333334 * mapScale;
-            img.y += 1.33333333333337 * mapScale;
+        // ── SIDEBAR ───────────────────────────────────────────────────
+        const fadeW = 60;
+        const grad  = this.add.graphics().setScrollFactor(0).setDepth(9997);
+        for (let i = 0; i < fadeW; i++) {
+            grad.fillStyle(0x0d0d1a, i / fadeW);
+            grad.fillRect(sidebarX - fadeW + i, 0, 1, CAM_H);
         }
+        this.add.rectangle(sidebarX, 0, SIDEBAR_W, CAM_H, 0x0d0d1a)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(9997);
+        this.add.rectangle(sidebarX, 0, 2, CAM_H, 0x4ecca3, 0.4)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(9998);
 
-        // TILE LAYERS
-        const baseLayer = this.map.createLayer('Tile Layer 1', tileset);
-        baseLayer.setScale(mapScale);
+        this.add.text(sidebarX + SIDEBAR_W / 2, 12, 'TOWERS', {
+            fontSize: '12px', fontFamily: 'monospace',
+            color: '#4ecca3', fontStyle: 'bold'
+        }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9999);
 
-        // Hide Tile Layer 1 ONLY for map2
-        if (this.selectedMap === 'map2') {
-            baseLayer.setVisible(false);
-        } else {
-            baseLayer.setVisible(true);
-        }
-
-
-        // MAP1: keep Pathing layer VISIBLE (as you wanted)
-        if (this.selectedMap === 'map1') {
-            if (this.map.getLayerIndex('Pathing') !== -1) {
-                const pathLayer = this.map.createLayer('Pathing', tileset);
-                pathLayer.setScale(mapScale);
-                pathLayer.setVisible(true); // explicitly visible
-            }
-        }
-
-        this.cameras.main.setBounds(0, 0, this.playWidth, screenH);
-        this.cameras.main.setScroll(0, 0);
-        this.cameras.main.setZoom(1);
-
-        // PATH MANAGER (uses hardcoded paths per map)
-        this.pathManager = new PathManager(this, mapScale);
-        this.path = this.pathManager.path;
-
-        // GROUPS
-        this.enemies = this.physics.add.group({ classType: Enemy });
-        this.bullets = this.physics.add.group({ classType: Bullet });
-        this.turrets = this.add.group();
-
-        // SIDEBAR
-        const sidebarX = this.playWidth;
-
-        this.add.rectangle(
-            sidebarX,
-            0,
-            this.sidebarWidth,
-            screenH,
-            0x222222
-        )
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(9999);
-
+        // ── TOWER DATA ────────────────────────────────────────────────
         this.towerData = {
-            lightningtower: { cost: 100, frame: 0 },
-            icetower:       { cost: 120, frame: 1 },
-            firetower:      { cost: 150, frame: 2 },
-            rocktower:      { cost: 200, frame: 3 }
+            lightningtower: { cost: 100, bulletType: 'bullet',     label: 'Lightning' },
+            icetower:       { cost: 120, bulletType: 'bullet',     label: 'Ice'       },
+            firetower:      { cost: 150, bulletType: 'firebullet', label: 'Fire'      },
+            rocktower:      { cost: 200, bulletType: 'bullet',     label: 'Rock'      },
+            darktower:      { cost: 160, bulletType: 'bullet',     label: 'Dark'      },
+            lighttower:     { cost: 170, bulletType: 'bullet',     label: 'Light'     },
+            psychictower:   { cost: 175, bulletType: 'bullet',     label: 'Psychic'   },
+            windtower:      { cost: 155, bulletType: 'bullet',     label: 'Wind'      }
         };
 
-        let yOffset = 120;
+        // ── 2×4 SIDEBAR GRID ──────────────────────────────────────────
+        const COLS      = 2;
+        const CELL      = Math.floor(SIDEBAR_W / COLS);
+        const ICON_SIZE = 44;
+        const GRID_TOP  = 36;
 
-        Object.keys(this.towerData).forEach(type => {
-            const data = this.towerData[type];
+        this._sidebarIcons = [];
 
-            const icon = this.add.image(
-                sidebarX + 80,
-                yOffset,
-                'turret',
-                data.frame
-            )
-            .setInteractive()
-            .setScrollFactor(0)
-            .setDepth(9999)
-            .setScale(0.7);
+        Object.keys(this.towerData).forEach((type, index) => {
+            const data  = this.towerData[type];
+            const col   = index % COLS;
+            const row   = Math.floor(index / COLS);
+            const cellX = sidebarX + col * CELL;
+            const cellY = GRID_TOP  + row * (CELL + 10);
+            const iconX = cellX + CELL / 2;
+            const iconY = cellY + 6 + ICON_SIZE / 2;
 
-            this.add.text(sidebarX + 40, yOffset + 50, `$${data.cost}`, {
-                fontSize: "16px",
-                color: "#ffffff"
-            }).setScrollFactor(0).setDepth(9999);
+            const cellBg = this.add.rectangle(cellX + 2, cellY + 2, CELL - 4, CELL - 4, 0x1a1a2e)
+                .setOrigin(0, 0).setScrollFactor(0).setDepth(9998)
+                .setStrokeStyle(1, 0x2a2a4e);
+
+            const frame     = this.textures.get('turret').get(type);
+            const iconScale = Math.min(ICON_SIZE / frame.realWidth, ICON_SIZE / frame.realHeight);
+
+            const icon = this.add.image(iconX, iconY, 'turret', type)
+                .setScale(iconScale).setScrollFactor(0).setDepth(9999).setInteractive();
+
+            this.add.text(iconX, iconY + ICON_SIZE / 2 + 2, data.label, {
+                fontSize: '8px', fontFamily: 'monospace', color: '#8888aa'
+            }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9999);
+
+            this.add.text(iconX, iconY + ICON_SIZE / 2 + 12, `$${data.cost}`, {
+                fontSize: '10px', fontFamily: 'monospace', color: '#f0c040', fontStyle: 'bold'
+            }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(9999);
+
+            icon.on('pointerover', () => { icon.setTint(0xaaddff); cellBg.setFillStyle(0x2a2a4e); });
+            icon.on('pointerout',  () => { icon.clearTint();        cellBg.setFillStyle(0x1a1a2e); });
 
             icon.towerType = type;
-            this.input.setDraggable(icon);
-
-            yOffset += 140;
+            this._sidebarIcons.push(icon);
         });
 
-        this.draggingTower = null;
-        this.draggingType = null;
+        // ── DRAG SYSTEM ───────────────────────────────────────────────
+        this._drag = null;
 
-        this.input.on('dragstart', (pointer, gameObject) => {
-            if (!gameObject.towerType) return;
+        this.input.on('pointerdown', (pointer, targets) => {
+            const icon = targets.find(t => t.towerType);
+            if (!icon) return;
 
-            const type = gameObject.towerType;
+            const type = icon.towerType;
             const data = this.towerData[type];
-
-
             if (this.money < data.cost) return;
 
-            this.draggingType = type;
+            const frame      = this.textures.get('turret').get(type);
+            const ghostScale = Math.min(GHOST_SIZE / frame.realWidth, GHOST_SIZE / frame.realHeight);
 
-            this.draggingTower = this.add.image(
-                pointer.x,
-                pointer.y,
-                'turret',
-                data.frame
-            )
-            .setAlpha(0.5)
-            .setDepth(9999);
+            const sx = Math.round(pointer.x / GRID_SIZE) * GRID_SIZE;
+            const sy = Math.round(pointer.y / GRID_SIZE) * GRID_SIZE;
+
+            const ghost = this.add.image(sx, sy, 'turret', type)
+                .setScale(ghostScale).setAlpha(0.8).setDepth(10000);
+
+            this._drag = { type, data, ghost };
         });
 
-        this.input.on('drag', (pointer) => {
-            if (!this.draggingTower) return;
+        this.input.on('pointermove', (pointer) => {
+            if (!this._drag) return;
+            const { ghost, data } = this._drag;
 
-            const snappedX = Math.floor(pointer.x / 64) * 64 + 32;
-            const snappedY = Math.floor(pointer.y / 64) * 64 + 32;
-
-            this.draggingTower.setPosition(snappedX, snappedY);
-
-            if (this.pathManager.canPlace(snappedX, snappedY)) {
-                this.draggingTower.setTint(0xffffff);
+            if (pointer.x < sidebarX) {
+                const sx = Math.round(pointer.x / GRID_SIZE) * GRID_SIZE;
+                const sy = Math.round(pointer.y / GRID_SIZE) * GRID_SIZE;
+                ghost.setPosition(sx, sy);
+                const i  = Math.floor(pointer.y / GRID_SIZE);
+                const j  = Math.floor(pointer.x / GRID_SIZE);
+                const ok = this.canPlaceTurret(i, j) && this.money >= data.cost;
+                ghost.setTint(ok ? 0xffffff : 0xff4444).setAlpha(ok ? 0.85 : 0.5);
             } else {
-                this.draggingTower.setTint(0xff0000);
+                ghost.setPosition(pointer.x, pointer.y).setTint(0xff4444).setAlpha(0.5);
             }
         });
 
-        this.input.on('dragend', (pointer) => {
-            if (!this.draggingTower) return;
+        this.input.on('pointerup', (pointer) => {
+            if (!this._drag) return;
+            const { type, data, ghost } = this._drag;
 
-            const snappedX = Math.floor(pointer.x / 64) * 64 + 32;
-            const snappedY = Math.floor(pointer.y / 64) * 64 + 32;
+            if (pointer.x < sidebarX) {
+                const i = Math.floor(pointer.y / GRID_SIZE);
+                const j = Math.floor(pointer.x / GRID_SIZE);
 
-            const data = this.towerData[this.draggingType];
+                if (this.canPlaceTurret(i, j) && this.money >= data.cost) {
+                    const turret = new Turret(this, type);
+                    this.turrets.add(turret);
+                    turret.place(i, j);
+                    turret.bulletType = data.bulletType;
 
-            if (this.pathManager.canPlace(snappedX, snappedY) && this.money >= data.cost) {
-                const turret = new Turret(this, this.draggingType);
+                    this.money -= data.cost;
+                    this.moneyText.setText(`💰 $${this.money}`);
 
-                this.add.existing(turret);
-                this.turrets.add(turret);
-
-                turret.setTexture('turret', data.frame);
-                turret.setAlpha(1);
-                turret.clearTint();
-                turret.setScale(1);
-
-                const i = Math.floor(snappedY / 64);
-                const j = Math.floor(snappedX / 64);
-                turret.place(i, j);
-
-                this.money -= data.cost;
-                this.moneyText.setText(`Money: $${this.money}`);
+                    this.tweens.add({
+                        targets: turret,
+                        scaleX: turret.scaleX * 1.35,
+                        scaleY: turret.scaleY * 1.35,
+                        duration: 80, yoyo: true, ease: 'Quad.easeOut'
+                    });
+                }
             }
 
-            this.draggingTower.destroy();
-            this.draggingTower = null;
-            this.draggingType = null;
+            ghost.destroy();
+            this._drag = null;
         });
 
-        this.waveManager = new WaveManager(this, this.enemies, this.path, this.difficulty);
+        // ── UPGRADE UI ────────────────────────────────────────────────
+        this.upgradeUI = new TowerUpgradeUI(this);
 
-        this.physics.add.overlap(this.enemies, this.bullets, this.damageEnemy, null, this);
-
-        // --- PAUSE MENU UI ---
-        this.pauseContainer = this.add.container(this.scale.width / 2, this.scale.height / 2);
-        this.pauseContainer.setDepth(9999);
-
-        // Background
-        const panel = this.add.rectangle(0, 0, 300, 200, 0x000000, 0.75).setStrokeStyle(3, 0xffffff);
-
-        // Resume button
-        const resumeBtn = this.add.text(0, -40, "Resume", {
-            fontSize: "28px",
-            color: "#ffffff"
-        }).setOrigin(0.5).setInteractive();
-
-        // Exit button
-        const exitBtn = this.add.text(0, 40, "Exit to Menu", {
-            fontSize: "28px",
-            color: "#ffffff"
-        }).setOrigin(0.5).setInteractive();
-
-        this.pauseContainer.add([panel, resumeBtn, exitBtn]);
-        this.pauseContainer.setVisible(false);
-
-        // Resume click
-        resumeBtn.on("pointerdown", () => {
-            this.resumeGame();
-        });
-
-        // Exit click
-        exitBtn.on("pointerdown", () => {
-            this.scene.stop("MainScene");
-            this.scene.start("MenuScene"); // change to your menu scene key
-        });
-
-        this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-
-        this.escapeKey.on("down", () => {
-            if (this.isPaused) {
-                this.resumeGame();
-            } else {
-                this.pauseGame();
-            }
-        });
+        // ── WAVE MANAGER ──────────────────────────────────────────────
+        this.waveManager = new WaveManager(this, this.enemies, this.path);
     }
 
+    // ── UPDATE ────────────────────────────────────────────────────────
+
     update(time, delta) {
-        if (this.waveManager) this.waveManager.update(time, delta);
+        if (!this.waveManager) return;
 
-        this.enemies.getChildren().forEach(enemy => {
-            if (enemy.active) enemy.update(time, delta, this.path, this.isPaused);
+        this.waveManager.update(time, delta);
+
+        this.enemies.getChildren().forEach(e => {
+            if (e.active) e.update(time, delta, this.path);
+        });
+        this.turrets.getChildren().forEach(t => {
+            if (t.active) t.update(time, delta);
         });
 
-        this.bullets.getChildren().forEach(bullet => {
-            if (bullet.active) bullet.update(time, delta);
-        });
+        if (Phaser.Input.Keyboard.JustDown(this.keyF2)) this.pathManager?.toggleBlocked();
+        if (Phaser.Input.Keyboard.JustDown(this.keyF3)) this.pathManager?.togglePath();
+    }
 
-        this.turrets.getChildren().forEach(turret => {
-            if (turret.active) turret.update(time, delta);
-        });
+    // ── HELPERS ───────────────────────────────────────────────────────
 
-        if (Phaser.Input.Keyboard.JustDown(this.keyF2)) {
-            this.pathManager.toggleBlocked();
-        }
+    isNearPath(x, y) {
+        if (!this.path) return false;
+        return this.path.getPoints(300).some(p =>
+            Phaser.Math.Distance.Between(x, y, p.x, p.y) < 48
+        );
+    }
 
-        if (Phaser.Input.Keyboard.JustDown(this.keyF3)) {
-            this.pathManager.togglePath();
-        }
+    canPlaceTurret(i, j) {
+        const grid = this.gridSize || 64;
+        const x = j * grid + grid / 2;
+        const y = i * grid + grid / 2;
+        if (x + grid / 2 > this.cameras.main.width - 200) return false;
+        if (this.isNearPath(x, y)) return false;
+        return true;
     }
 
     getEnemyInRange(x, y, range) {
-        return this.enemies.getChildren().find(enemy =>
-            enemy.active &&
-            Phaser.Math.Distance.Between(
-                x,
-                y,
-                enemy.x,
-                enemy.y
-            ) <= range
+        return this.enemies.getChildren().find(e =>
+            e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= range
         ) || null;
     }
 
-    spawnBullet(x, y, angle, damage) {
-        const bullet = this.bullets.get();
-        if (bullet) bullet.fire(x, y, angle, damage);
+    spawnBullet(turret, x, y, angle, opts = {}) {
+        const group  = turret.bulletType === 'firebullet' ? this.fireBullets : this.bullets;
+        const bullet = group.get();
+        if (!bullet) return;
+
+        bullet.init(turret.bulletType, { speed: 2000 });
+        bullet.fire(x, y, angle, opts.damage ?? turret.damage);
     }
 
     damageEnemy(enemy, bullet) {
-        if (enemy.active && bullet.active) {
-            enemy.receiveDamage(bullet.damage);
-            bullet.disableBody(true, true);
+        if (!enemy.active || !bullet.active) return;
+
+        enemy.receiveDamage(bullet.damage);
+
+        if (bullet.textureKey === 'firebullet') {
+            this.enemies.getChildren().forEach(e => {
+                if (!e.active || e === enemy) return;
+                if (Phaser.Math.Distance.Between(enemy.x, enemy.y, e.x, e.y) <= 80)
+                    e.receiveDamage(Math.floor(bullet.damage * 0.5));
+            });
         }
+
+        bullet.deactivate();
     }
 
     addGold(amount) {
         this.money += amount;
-        this.moneyText.setText(`Money: $${this.money}`);
+        this.moneyText?.setText(`💰 $${this.money}`);
     }
 
     loseLives(amount) {
-        this.lives -= amount;
-        if (this.lives < 0) this.lives = 0;
-
-        this.livesText.setText(`Lives: ${this.lives}`);
-
-        if (this.lives === 0) {
-            this.gameOver();
-        }
+        this.lives = Math.max(0, (this.lives || 0) - amount);
+        this.livesText?.setText(`❤ ${this.lives}`);
+        if (this.lives === 0) this.gameOver();
     }
 
     gameOver() {
@@ -363,48 +403,33 @@ export default class MainScene extends Phaser.Scene {
         this.add.text(
             this.cameras.main.centerX,
             this.cameras.main.centerY,
-            "You Have Died!",
+            'GAME OVER',
             {
-                fontSize: "64px",
-                color: "#ff0000",
-                backgroundColor: "#000000",
-                padding: { x: 20, y: 10 }
+                fontSize: '64px', fontFamily: 'monospace',
+                color: '#ff0000', stroke: '#000000', strokeThickness: 8,
+                backgroundColor: '#000000', padding: { x: 24, y: 12 }
             }
-        )
-        .setOrigin(0.5)
-        .setDepth(9999)
-        .setScrollFactor(0);
+        ).setOrigin(0.5).setDepth(99999).setScrollFactor(0);
+    }
+
+    startNextRound() {
+        this.startButton.setVisible(false);
+        this.waveManager.startNextWave();
     }
 
     pauseGame() {
         this.isPaused = true;
-
         this.physics.world.pause();
-
-        if (this.waveManager) {
-            this.waveManager.pauseWaves?.();
-        }
-
+        this.waveManager?.pauseWaves?.();
         this.time.paused = true;
-
-        if (this.pauseContainer) {
-            this.pauseContainer.setVisible(true);
-        }
+        this.pauseContainer?.setVisible(true);
     }
 
     resumeGame() {
         this.isPaused = false;
-
         this.physics.world.resume();
-
-        if (this.waveManager) {
-            this.waveManager.resumeWaves?.();
-        }
-
+        this.waveManager?.resumeWaves?.();
         this.time.paused = false;
-
-        if (this.pauseContainer) {
-            this.pauseContainer.setVisible(false);
-        }
+        this.pauseContainer?.setVisible(false);
     }
 }
