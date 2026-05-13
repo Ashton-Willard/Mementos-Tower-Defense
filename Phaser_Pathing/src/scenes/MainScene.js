@@ -7,6 +7,11 @@ import IceBullet from '../objects/IceBullet.js';
 import WaveManager from '../systems/WaveManager.js';
 import PathManager from '../systems/PathManager.js';
 import TowerUpgradeUI from './TowerUpgradeUI.js';
+import WindBullet from '../objects/WindBullet.js';
+import MindBlast from '../objects/MindBlast.js';
+import DarkBullet from '../objects/DarkBullet.js';
+import LightBullet from '../objects/LightBullet.js';
+import RockBullet from '../objects/RockBullet.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -17,6 +22,11 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('bullet',     'src/assets/bullet.png');
         this.load.image('firebullet', 'src/assets/firebullet.png');
         this.load.image('icebullet',  'src/assets/icebullet.png');
+         this.load.image('rockbullet',     'src/assets/rockbullet.png');
+        this.load.image('lightbullet', 'src/assets/lightbullet.png');
+        this.load.image('darkbullet',  'src/assets/darkbullet.png');
+         this.load.image('mindblast',     'src/assets/mindblast.png');
+        this.load.image('windbullet', 'src/assets/windbullet.png');
         this.load.image('tiles',      'src/assets/tiles.png');
         this.load.image('enemy',      'src/assets/enemy.png');
 
@@ -121,17 +131,29 @@ export default class MainScene extends Phaser.Scene {
         })
         .setDepth(9999).setScrollFactor(0);
 
-        // ── GROUPS ────────────────────────────────────────────────────
+            // ── GROUPS ────────────────────────────────────────────────────
         this.enemies     = this.physics.add.group({ classType: Enemy });
-        this.bullets     = this.physics.add.group({ classType: Bullet,     runChildUpdate: false });
+        this.turrets     = this.physics.add.group({ classType: Turret, runChildUpdate: false });
+
+        this.bullets     = this.physics.add.group({ classType: Bullet, runChildUpdate: false });
         this.fireBullets = this.physics.add.group({ classType: FireBullet, runChildUpdate: false });
-        this.iceBullets  = this.physics.add.group({ classType: IceBullet,  runChildUpdate: false });
+        this.iceBullets  = this.physics.add.group({ classType: IceBullet, runChildUpdate: false });
+        this.windBullets = this.physics.add.group({ classType: WindBullet, runChildUpdate: false });
+        this.mindBlasts  = this.physics.add.group({ classType: MindBlast, runChildUpdate: false });
+        this.darkBullets = this.physics.add.group({ classType: DarkBullet, runChildUpdate: false });
+        this.lightBullets = this.physics.add.group({ classType: LightBullet, runChildUpdate: false });
+        this.rockBullets  = this.physics.add.group({ classType: RockBullet, runChildUpdate: false });
 
-        this.physics.add.overlap(this.enemies, this.iceBullets,  this.damageEnemy, null, this);
-        this.turrets = this.add.group();
-
-        this.physics.add.overlap(this.enemies, this.bullets,     this.damageEnemy, null, this);
+        this.physics.add.overlap(this.enemies, this.bullets, this.damageEnemy, null, this);
         this.physics.add.overlap(this.enemies, this.fireBullets, this.damageEnemy, null, this);
+        this.physics.add.overlap(this.enemies, this.iceBullets, this.damageEnemy, null, this);
+
+        this.physics.add.overlap(this.enemies, this.windBullets, this.damageEnemy, null, this);
+        this.physics.add.overlap(this.enemies, this.mindBlasts, this.damageEnemy, null, this);
+        this.physics.add.overlap(this.enemies, this.darkBullets, this.damageEnemy, null, this);
+        this.physics.add.overlap(this.enemies, this.lightBullets, this.damageEnemy, null, this);
+        this.physics.add.overlap(this.enemies, this.rockBullets, this.damageEnemy, null, this);
+    
 
         // ── SIDEBAR ───────────────────────────────────────────────────
         const fadeW = 60;
@@ -153,13 +175,13 @@ export default class MainScene extends Phaser.Scene {
         // ── TOWER DATA ────────────────────────────────────────────────
         this.towerData = {
             lightningtower: { cost: 100, bulletType: 'bullet',     label: 'Lightning' },
-            icetower:       { cost: 120, bulletType: 'bullet',     label: 'Ice'       },
+            icetower:       { cost: 120, bulletType: 'icebullet',     label: 'Ice'       },
             firetower:      { cost: 150, bulletType: 'firebullet', label: 'Fire'      },
-            rocktower:      { cost: 200, bulletType: 'bullet',     label: 'Rock'      },
-            darktower:      { cost: 160, bulletType: 'bullet',     label: 'Dark'      },
-            lighttower:     { cost: 170, bulletType: 'bullet',     label: 'Light'     },
-            psychictower:   { cost: 175, bulletType: 'bullet',     label: 'Psychic'   },
-            windtower:      { cost: 155, bulletType: 'bullet',     label: 'Wind'      }
+            rocktower:      { cost: 200, bulletType: 'rockbullet',     label: 'Rock'      },
+            darktower:      { cost: 160, bulletType: 'darkbullet',     label: 'Dark'      },
+            lighttower:     { cost: 170, bulletType: 'lightbullet',     label: 'Light'     },
+            psychictower:   { cost: 175, bulletType: 'mindblast',     label: 'Psychic'   },
+            windtower:      { cost: 155, bulletType: 'windbullet',     label: 'Wind'      }
         };
 
         // ── 2×4 SIDEBAR GRID ──────────────────────────────────────────
@@ -317,25 +339,55 @@ export default class MainScene extends Phaser.Scene {
     }
 
     // ── UPDATE ────────────────────────────────────────────────────────
+update(time, delta) {
 
-    update(time, delta) {
-        if (!this.waveManager) return;
+    if (!this.enemies || !this.waveManager) return;
 
-        this.waveManager.update(time, delta);
+    this.waveManager.update(time, delta);
 
-        this.enemies.getChildren().forEach(e => {
-            if (e.active) e.update(time, delta, this.path, this.isPaused);
-        });
-        this.bullets.getChildren().forEach(b => {
-            if (b.active) b.update(time, delta);
-        });
-        this.turrets.getChildren().forEach(t => {
-            if (t.active) t.update(time, delta);
-        });
+    this.enemies?.getChildren?.()?.forEach(e => {
+        if (e?.active) e.update(time, delta, this.path, this.isPaused);
+    });
 
-        if (Phaser.Input.Keyboard.JustDown(this.keyF2)) this.pathManager.toggleBlocked();
-        if (Phaser.Input.Keyboard.JustDown(this.keyF3)) this.pathManager.togglePath();
-    }
+    this.bullets?.getChildren?.()?.forEach(b => {
+        if (b?.active) b.update(time, delta);
+    });
+
+    this.fireBullets?.getChildren?.()?.forEach(b => {
+        if (b?.active) b.update(time, delta);
+    });
+
+    this.iceBullets?.getChildren?.()?.forEach(b => {
+        if (b?.active) b.update(time, delta);
+    });
+
+    this.windBullets?.getChildren?.()?.forEach(b => {
+        if (b?.active) b.update(time, delta);
+    });
+
+    this.mindBlasts?.getChildren?.()?.forEach(b => {
+        if (b?.active) b.update(time, delta);
+    });
+
+    this.darkBullets?.getChildren?.()?.forEach(b => {
+        if (b?.active) b.update(time, delta);
+    });
+
+    this.lightBullets?.getChildren?.()?.forEach(b => {
+        if (b?.active) b.update(time, delta);
+    });
+
+    this.rockBullets?.getChildren?.()?.forEach(b => {
+        if (b?.active) b.update(time, delta);
+    });
+
+    this.turrets?.getChildren?.()?.forEach(t => {
+        if (t?.active) t.update(time, delta);
+    });
+
+    if (Phaser.Input.Keyboard.JustDown(this.keyF2)) this.pathManager.toggleBlocked();
+    if (Phaser.Input.Keyboard.JustDown(this.keyF3)) this.pathManager.togglePath();
+}
 
     // ── HELPERS ───────────────────────────────────────────────────────
 
@@ -345,24 +397,29 @@ export default class MainScene extends Phaser.Scene {
         ) || null;
     }
 
-    spawnBullet(turret, x, y, angle, opts = {}) {
-        const damage = opts.damage ?? turret.damage;
+ spawnBullet(turret, x, y, angle, opts = {}) {
 
-        if (turret.bulletType === 'firebullet') {
-            const bullet = this.fireBullets.get();
-            if (!bullet) return;
-            bullet.init('firebullet', { speed: 600 });
-            bullet.fire(x, y, angle, damage);
-        } else if (turret.bulletType === 'icebullet') {
-            const bullet = this.iceBullets.get();
-            if (!bullet) return;
-            bullet.fire(x, y, angle, damage);
-        } else {
-            const bullet = this.bullets.get();
-            if (!bullet) return;
-            bullet.fire(x, y, angle, damage);
-        }
-    }
+    const damage = opts.damage ?? turret.damage;
+
+    const groups = {
+        bullet: this.bullets,
+        firebullet: this.fireBullets,
+        icebullet: this.iceBullets,
+        windbullet: this.windBullets,
+        mindblast: this.mindBlasts,
+        darkbullet: this.darkBullets,
+        lightbullet: this.lightBullets,
+        rockbullet: this.rockBullets
+    };
+
+    const group = groups[turret.bulletType];
+    if (!group) return;
+
+    const bullet = group.get();
+    if (!bullet) return;
+
+    bullet.fire?.(x, y, angle, damage);
+}
 
     damageEnemy(enemy, bullet) {
         if (!enemy.active || !bullet.active) return;
