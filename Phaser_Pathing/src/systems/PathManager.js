@@ -2,7 +2,6 @@ export default class PathManager {
     constructor(scene, mapScale) {
         this.scene = scene;
         this.mapScale = mapScale;
-
         this.radiusByMap = {
             map1: 48,
             map2: 38
@@ -126,8 +125,8 @@ export default class PathManager {
         this.blockedDebug = scene.add.graphics().setDepth(9998);
         this.pathDebug = scene.add.graphics().setDepth(9998);
 
-        this.showBlocked = false;
-               this.showPath = false;
+        this.showBlocked = true;
+               this.showPath = true;
 
         this.drawBlockedTiles();
         this.drawPath();
