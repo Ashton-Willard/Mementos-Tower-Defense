@@ -65,7 +65,7 @@ export default class AuthScene extends Phaser.Scene {
             if (user) {
                 saveManager.setUser(user);
                 await saveManager.loadOrCreateUserData();
-                this.scene.start("AuthScene");
+                this.scene.start("TitleScreen");
             }
         });
     }
