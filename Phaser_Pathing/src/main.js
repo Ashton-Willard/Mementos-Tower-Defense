@@ -4,33 +4,43 @@ import TitleScreen from "./scenes/TitleScreen.js";
 import UIScene from "./scenes/UIScene.js";
 import AuthScene from "./scenes/AuthScene.js";
 
-const config = {
-    type: Phaser.AUTO,
-    parent: 'game-container',
-    width: 1280,
-    height: 720,
+/*
+    IMPORTANT:
+    Phaser no longer starts automatically.
+    index.html will call startGame() AFTER the user logs in.
+*/
 
-    dom: {
-        createContainer: true
-    },
+export function startGame() {
 
-    scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    },
+    const config = {
+        type: Phaser.AUTO,
+        parent: 'game-container',
+        width: 1280,
+        height: 720,
 
-    physics: {
-        default: 'arcade',
-        arcade: { debug: false }
-    },
+        dom: {
+            createContainer: true
+        },
 
-    scene: [
-        AuthScene,
-        TitleScreen,
-        GameScene,
-        MainScene,
-        UIScene
-    ]
-};
+        scale: {
+            mode: Phaser.Scale.FIT,
+            autoCenter: Phaser.Scale.CENTER_BOTH
+        },
 
-new Phaser.Game(config);
+        physics: {
+            default: 'arcade',
+            arcade: { debug: false }
+        },
+
+        scene: [
+            // AuthScene is no longer used for login,
+            // but you can keep it if you want to reuse it later.
+            TitleScreen,
+            GameScene,
+            MainScene,
+            UIScene
+        ]
+    };
+
+    new Phaser.Game(config);
+}

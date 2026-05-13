@@ -7,9 +7,7 @@
 
     <style>
         /* RESET */
-        *,
-        *::before,
-        *::after {
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -133,10 +131,7 @@
     <!-- FIREBASE -->
     <script type="module" src="./src/systems/firebase.js"></script>
 
-    <!-- GAME ENTRY -->
-    <script type="module" src="./src/main.js"></script>
-
-    <!-- AUTH LOGIC -->
+    <!-- AUTH + GAME LAUNCH LOGIC -->
     <script type="module">
         import { auth } from "./src/systems/firebase.js";
         import {
@@ -152,6 +147,17 @@
         const errorText = document.getElementById("auth-error");
         const wrapper = document.getElementById("auth-wrapper");
 
+        let gameStarted = false;
+
+        function startPhaserGame() {
+            if (gameStarted) return;
+            gameStarted = true;
+
+            import("./src/main.js").then(module => {
+                module.startGame(); // main.js must export startGame()
+            });
+        }
+
         /* Detect fresh launch (NOT refresh) */
         const freshLaunch = !localStorage.getItem("gameAlreadyOpened");
         localStorage.setItem("gameAlreadyOpened", "true");
@@ -165,6 +171,7 @@
             try {
                 await signInWithEmailAndPassword(auth, email.value, password.value);
                 wrapper.style.display = "none";
+                startPhaserGame();
             } catch (err) {
                 errorText.textContent = err.message;
             }
@@ -175,6 +182,7 @@
             try {
                 await createUserWithEmailAndPassword(auth, email.value, password.value);
                 wrapper.style.display = "none";
+                startPhaserGame();
             } catch (err) {
                 errorText.textContent = err.message;
             }
@@ -183,9 +191,10 @@
         /* AUTO LOGIN */
         onAuthStateChanged(auth, (user) => {
             if (user && !freshLaunch) {
-                wrapper.style.display = "none"; // refresh → stay logged in
+                wrapper.style.display = "none";
+                startPhaserGame();
             } else {
-                wrapper.style.display = "flex"; // fresh launch → show login
+                wrapper.style.display = "flex";
             }
         });
     </script>
