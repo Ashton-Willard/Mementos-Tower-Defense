@@ -2,6 +2,8 @@ export default class PathManager {
     constructor(scene, mapScale) {
         this.scene = scene;
         this.mapScale = mapScale;
+        this.showBlocked = false;
+        this.showPath = false;
         this.radiusByMap = {
             map1: 48,
             map2: 38
