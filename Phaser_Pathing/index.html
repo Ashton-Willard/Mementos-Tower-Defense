@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memento Tower Defense</title>
+
+    <style>
+        /* RESET */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background-color: #040218;
+            font-family: Arial, sans-serif;
+        }
+
+        /* GAME CANVAS */
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #game-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* AUTH UI WRAPPER */
+        #auth-wrapper {
+            position: absolute;
+            top: 28%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+
+            width: 360px;
+            padding: 20px;
+
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+
+            background: rgba(0, 0, 0, 0.55);
+            border: 2px solid #ff2a2a;
+            border-radius: 10px;
+            backdrop-filter: blur(4px);
+
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.35);
+        }
+
+        /* INPUTS */
+        #auth-wrapper input {
+            width: 100%;
+            padding: 12px;
+            font-size: 20px;
+
+            border-radius: 6px;
+            border: 2px solid #ff2a2a;
+            background: #0d0b1f;
+            color: white;
+
+            outline: none;
+            transition: 0.15s;
+        }
+
+        #auth-wrapper input:focus {
+            border-color: #ff5555;
+            background: #15122b;
+        }
+
+        /* BUTTONS */
+        #auth-wrapper button {
+            width: 100%;
+            padding: 12px;
+            font-size: 22px;
+
+            background: #ff2a2a;
+            color: white;
+
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+
+            transition: 0.15s;
+        }
+
+        #auth-wrapper button:hover {
+            background: #ff4444;
+        }
+
+        /* ERROR TEXT */
+        #auth-error {
+            text-align: center;
+            color: #ff4444;
+            font-size: 18px;
+            min-height: 24px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container"></div>
+
+    <!-- AUTH UI -->
+    <div id="auth-wrapper">
+        <input id="email" type="email" placeholder="Email">
+        <input id="password" type="password" placeholder="Password">
+
+        <button id="login-btn">Login</button>
+        <button id="signup-btn">Create Account</button>
+
+        <p id="auth-error"></p>
+    </div>
+
+    <!-- PHASER -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.js"></script>
+
+    <!-- FIREBASE -->
+    <script type="module" src="./src/systems/firebase.js"></script>
+
+    <!-- GAME ENTRY -->
+    <script type="module" src="./src/main.js"></script>
+
+    <!-- AUTH LOGIC -->
+    <script type="module">
+        import { auth } from "./src/systems/firebase.js";
+        import {
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+        const email = document.getElementById("email");
+        const password = document.getElementById("password");
+        const loginBtn = document.getElementById("login-btn");
+        const signupBtn = document.getElementById("signup-btn");
+        const errorText = document.getElementById("auth-error");
+        const wrapper = document.getElementById("auth-wrapper");
+
+        /* Detect fresh launch (NOT refresh) */
+        const freshLaunch = !localStorage.getItem("gameAlreadyOpened");
+        localStorage.setItem("gameAlreadyOpened", "true");
+
+        window.addEventListener("beforeunload", () => {
+            localStorage.removeItem("gameAlreadyOpened");
+        });
+
+        /* LOGIN */
+        loginBtn.onclick = async () => {
+            try {
+                await signInWithEmailAndPassword(auth, email.value, password.value);
+                wrapper.style.display = "none";
+            } catch (err) {
+                errorText.textContent = err.message;
+            }
+        };
+
+        /* SIGNUP */
+        signupBtn.onclick = async () => {
+            try {
+                await createUserWithEmailAndPassword(auth, email.value, password.value);
+                wrapper.style.display = "none";
+            } catch (err) {
+                errorText.textContent = err.message;
+            }
+        };
+
+        /* AUTO LOGIN */
+        onAuthStateChanged(auth, (user) => {
+            if (user && !freshLaunch) {
+                wrapper.style.display = "none"; // refresh → stay logged in
+            } else {
+                wrapper.style.display = "flex"; // fresh launch → show login
+            }
+        });
+    </script>
+</body>
+</html>
