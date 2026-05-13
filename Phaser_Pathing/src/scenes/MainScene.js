@@ -13,6 +13,40 @@ import DarkBullet from '../objects/DarkBullet.js';
 import LightBullet from '../objects/LightBullet.js';
 import RockBullet from '../objects/RockBullet.js';
 
+export function startGame() {
+
+    const config = {
+        type: Phaser.AUTO,
+        parent: 'game-container',
+        width: 1280,
+        height: 720,
+
+        dom: {
+            createContainer: true
+        },
+
+        scale: {
+            mode: Phaser.Scale.FIT,
+            autoCenter: Phaser.Scale.CENTER_BOTH
+        },
+
+        physics: {
+            default: 'arcade',
+            arcade: { debug: false }
+        },
+
+        scene: [
+            // AuthScene is no longer used for login,
+            // but you can keep it if you want to reuse it later.
+            TitleScreen,
+            GameScene,
+            MainScene,
+            UIScene
+        ]
+    };
+
+    new Phaser.Game(config);
+}
 export default class MainScene extends Phaser.Scene {
     constructor() {
         super('MainScene');
@@ -486,17 +520,95 @@ update(time, delta) {
 
     gameOver() {
         this.scene.pause();
-        this.add.text(
-            this.cameras.main.centerX,
-            this.cameras.main.centerY,
-            'GAME OVER',
-            {
-                fontSize: '64px', fontFamily: 'monospace',
-                color: '#ff0000', stroke: '#000000', strokeThickness: 8,
-                backgroundColor: '#000000', padding: { x: 24, y: 12 }
-            }
-        ).setOrigin(0.5).setDepth(99999).setScrollFactor(0);
+
+        const cx = this.cameras.main.centerX;
+        const cy = this.cameras.main.centerY;
+
+        this.gameOverContainer = this.add.container(cx, cy).setDepth(10000);
+
+        const panel = this.add.rectangle(0, 0, 360, 220, 0x000000, 0.85)
+            .setStrokeStyle(3, 0x4ecca3);
+
+        const title = this.add.text(0, -70, 'GAME OVER', {
+            fontSize: '48px',
+            fontFamily: 'monospace',
+            color: '#ff6666',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setOrigin(0.5);
+
+        const restartBtn = this.add.text(0, 0, 'Restart', {
+            fontSize: '24px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        }).setOrigin(0.5).setInteractive()
+        .on('pointerover', function () { this.setStyle({ color: '#4ecca3' }); })
+        .on('pointerout',  function () { this.setStyle({ color: '#ffffff' }); })
+        .on('pointerdown', () => {
+            this.scene.restart({ difficulty: this.difficulty, map: this.selectedMap });
+        });
+
+        const exitBtn = this.add.text(0, 60, 'Exit to Menu', {
+            fontSize: '24px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        }).setOrigin(0.5).setInteractive()
+        .on('pointerover', function () { this.setStyle({ color: '#ff6666' }); })
+        .on('pointerout',  function () { this.setStyle({ color: '#ffffff' }); })
+        .on('pointerdown', () => {
+            this.scene.stop('MainScene');
+            this.scene.start('GameScene');
+        });
+
+        this.gameOverContainer.add([panel, title, restartBtn, exitBtn]);
     }
+
+
+    victoryScreen() {
+        this.scene.pause();
+
+        const cx = this.cameras.main.centerX;
+        const cy = this.cameras.main.centerY;
+
+        this.victoryContainer = this.add.container(cx, cy).setDepth(10000);
+
+        const panel = this.add.rectangle(0, 0, 360, 220, 0x000000, 0.85)
+            .setStrokeStyle(3, 0x4ecca3);
+
+        const title = this.add.text(0, -70, 'VICTORY!', {
+            fontSize: '48px',
+            fontFamily: 'monospace',
+            color: '#f0c040',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setOrigin(0.5);
+
+        const menuBtn = this.add.text(0, 0, 'Return to Menu', {
+            fontSize: '24px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        }).setOrigin(0.5).setInteractive()
+        .on('pointerover', function () { this.setStyle({ color: '#4ecca3' }); })
+        .on('pointerout',  function () { this.setStyle({ color: '#ffffff' }); })
+        .on('pointerdown', () => {
+            this.scene.stop('MainScene');
+            this.scene.start('MenuScene');
+        });
+
+        const exitBtn = this.add.text(0, 60, 'Exit Game', {
+            fontSize: '24px',
+            fontFamily: 'monospace',
+            color: '#ffffff'
+        }).setOrigin(0.5).setInteractive()
+        .on('pointerover', function () { this.setStyle({ color: '#ff6666' }); })
+        .on('pointerout',  function () { this.setStyle({ color: '#ffffff' }); })
+        .on('pointerdown', () => {
+            window.close();
+        });
+
+        this.victoryContainer.add([panel, title, menuBtn, exitBtn]);
+    }
+
 
     startNextRound() {
         this.roundButton.setVisible(false);
