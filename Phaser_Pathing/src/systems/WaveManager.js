@@ -18,84 +18,76 @@ export default class WaveManager {
         this.activeEvents = [];
     }
 
-    getWavesForDifficulty(diff) {
+        getWavesForDifficulty(diff) {
 
+        // ============================================================
+        // ========================== EASY =============================
+        // ============================================================
         if (diff === "EASY") {
-            return [
-                { pattern: [{ delay: 0, type: 'fast', count: 10, rate: 400 }] },
-                { pattern: [{ delay: 0, type: 'fast', count: 15, rate: 350 }] },
-                { pattern: [{ delay: 0, type: 'fast', count: 20, rate: 300 }] }
-            ];
-        }
+            const waves = [];
 
-        if (diff === "NORMAL") {
-            return [
-                {
-                    pattern: [
-                        { delay: 100, type: 'basic', count: 15, rate: 400 }
-                    ]
-                },
-                {
-                    pattern: [
-                        { delay: 0,    type: 'basic', count: 20, rate: 350 },
-                        { delay: 4000, type: 'fast',  count: 10, rate: 300 }
-                    ]
-                },
-                {
-                    // Wave 3 — first golem appearance
-                    pattern: [
-                        { delay: 0,    type: 'basic', count: 20, rate: 300 },
-                        { delay: 2000, type: 'fast',  count: 10, rate: 250 },
-                        { delay: 5000, type: 'golem', count: 2,  rate: 800 }
-                    ]
-                },
-                {
-                    pattern: [
-                        { delay: 0,    type: 'basic', count: 30, rate: 300 },
-                        { delay: 2000, type: 'fast',  count: 15, rate: 200 },
-                        { delay: 5000, type: 'golem', count: 3,  rate: 800 }
-                    ]
-                },
-                {
-                    pattern: [
-                        { delay: 0,    type: 'basic', count: 10, rate: 0   },
-                        { delay: 2000, type: 'fast',  count: 20, rate: 250 },
-                        { delay: 4000, type: 'golem', count: 4,  rate: 700 }
-                    ]
-                }
-            ];
-        }
+            for (let i = 1; i <= 50; i++) {
+                const basicCount = 8 + i * 2;       // grows slowly
+                const fastCount  = Math.floor(i/3); // fast enemies appear slowly
+                const golemCount = i % 15 === 0 ? 1 : 0; // rare golems
 
-        // HARD
-        return [
-            {
-                pattern: [
-                    { delay: 0,    type: 'basic', count: 10, rate: 350 },
-                    { delay: 1500, type: 'fast',  count: 10, rate: 250 }
-                ]
-            },
-            {
-                pattern: [
-                    { delay: 0,    type: 'basic', count: 20, rate: 300 },
-                    { delay: 2000, type: 'fast',  count: 15, rate: 200 }
-                ]
-            },
-            {
-                // Wave 3 hard — golem intro with more pressure
-                pattern: [
-                    { delay: 0,    type: 'basic', count: 25, rate: 250 },
-                    { delay: 1500, type: 'fast',  count: 20, rate: 180 },
-                    { delay: 4000, type: 'golem', count: 3,  rate: 700 }
-                ]
-            },
-            {
-                pattern: [
-                    { delay: 0,    type: 'fast',  count: 20, rate: 200 },
-                    { delay: 2000, type: 'golem', count: 5,  rate: 600 }
-                ]
+                waves.push({
+                    pattern: [
+                        { delay: 0, type: "basic", count: basicCount, rate: 450 },
+                        ...(fastCount > 0 ? [{ delay: 2000, type: "fast", count: fastCount, rate: 400 }] : []),
+                        ...(golemCount > 0 ? [{ delay: 5000, type: "golem", count: golemCount, rate: 900 }] : [])
+                    ]
+                });
             }
-        ];
+
+            return waves;
+        }
+
+        // ============================================================
+        // ========================= NORMAL ============================
+        // ============================================================
+        if (diff === "NORMAL") {
+            const waves = [];
+
+            for (let i = 1; i <= 50; i++) {
+                const basicCount = 12 + i * 3;
+                const fastCount  = 4 + Math.floor(i * 0.8);
+                const golemCount = i % 7 === 0 ? Math.floor(i / 10) + 1 : 0;
+
+                waves.push({
+                    pattern: [
+                        { delay: 0, type: "basic", count: basicCount, rate: 350 },
+                        { delay: 1500, type: "fast", count: fastCount, rate: 250 },
+                        ...(golemCount > 0 ? [{ delay: 4000, type: "golem", count: golemCount, rate: 800 }] : [])
+                    ]
+                });
+            }
+
+            return waves;
+        }
+
+        // ============================================================
+        // =========================== HARD ============================
+        // ============================================================
+        const waves = [];
+
+        for (let i = 1; i <= 50; i++) {
+            const basicCount = 20 + i * 4;
+            const fastCount  = 10 + Math.floor(i * 1.2);
+            const golemCount = Math.floor(i / 5); // frequent golems
+
+            waves.push({
+                pattern: [
+                    { delay: 0, type: "fast", count: fastCount, rate: 180 },
+                    { delay: 1200, type: "basic", count: basicCount, rate: 220 },
+                    { delay: 3500, type: "golem", count: golemCount, rate: 650 }
+                ]
+            });
+        }
+
+        return waves;
     }
+
 
     startNextWave() {
         if (!this.waveFinished && this.currentWaveIndex >= 0) return;
