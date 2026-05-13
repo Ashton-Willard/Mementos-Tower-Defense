@@ -21,78 +21,127 @@ export default class WaveManager {
         this.activeEvents = [];
     }
 
+    // ============================================================
+    // NEW WAVE LOGIC WITH INTRO WAVES + LATE-MID APPEARANCE
+    // ============================================================
     getWavesForDifficulty(diff) {
 
-        // ============================================================
         // ========================== EASY ============================
-        // ============================================================
         if (diff === "EASY") {
             const waves = [];
 
             for (let i = 1; i <= 50; i++) {
-                const basicCount   = 8 + i * 2;
-                const fastCount    = Math.floor(i / 3);
-                const golemCount   = i % 15 === 0 ? 1 : 0;
-                // New enemies — appear gently on Easy
-                const wraithCount  = i >= 10 ? Math.floor((i - 10) / 6) : 0;   // starts wave 10, 1 per 6 waves
-                const iceTigerCount= i >= 20 ? Math.floor((i - 20) / 8) + 1 : 0; // starts wave 20
-                const moabCount    = i === 35 || i === 50 ? 1 : 0;              // boss cameos only
 
-                waves.push({
-                    pattern: [
-                        { delay: 0,    type: "basic",  count: basicCount,    rate: 450 },
-                        ...(fastCount     > 0 ? [{ delay: 2000, type: "fast",       count: fastCount,     rate: 400 }] : []),
-                        ...(golemCount    > 0 ? [{ delay: 5000, type: "golem",      count: golemCount,    rate: 900 }] : []),
-                        ...(wraithCount   > 0 ? [{ delay: 3000, type: "wraith",     count: wraithCount,   rate: 600 }] : []),
-                        ...(iceTigerCount > 0 ? [{ delay: 4000, type: "icetiger",   count: iceTigerCount, rate: 700 }] : []),
-                        ...(moabCount     > 0 ? [{ delay: 7000, type: "moab",       count: moabCount,     rate: 1200 }] : []),
-                    ]
-                });
-            }
+                const basicCount = 8 + i * 2;
+                const fastCount  = Math.floor(i / 3);
+                const golemCount = i % 15 === 0 ? 1 : 0;
 
-            return waves;
-        }
+                // --- REAL APPEARANCE START ---
+                const wraithCount    = i >= 20 ? Math.floor((i - 20) / 8) : 0;
+                const iceTigerCount  = i >= 28 ? Math.floor((i - 28) / 10) : 0;
+                const moabCount      = i >= 35 && (i % 15 === 0) ? 1 : 0;
 
-        // ============================================================
-        // ========================= NORMAL ===========================
-        // ============================================================
-        if (diff === "NORMAL") {
-            const waves = [];
-
-            for (let i = 1; i <= 50; i++) {
-                const basicCount    = 12 + i * 3;
-                const fastCount     = 4 + Math.floor(i * 0.8);
-                const golemCount    = i % 7 === 0 ? Math.floor(i / 10) + 1 : 0;
-                // New enemies — ramp up from mid-game
-                const wraithCount   = i >= 6  ? Math.floor((i - 6) / 4) + 1 : 0;   // starts wave 6
-                const iceTigerCount = i >= 12 ? Math.floor((i - 12) / 5) + 1 : 0;  // starts wave 12
-                const moabCount     = i % 10 === 0 ? Math.floor(i / 10) : 0;        // every 10 waves, more each time
-
-                // ── TESTING: force all 6 types into wave 1 ──────────────
-                // TODO: remove this block when done testing
-                if (i === 1) {
+                // --- INTRO WAVES ---
+                if (i === 15) {
                     waves.push({
                         pattern: [
-                            { delay: 0,    type: "basic",    count: 3, rate: 400 },
-                            { delay: 1000, type: "fast",     count: 3, rate: 300 },
-                            { delay: 2000, type: "golem",    count: 2, rate: 800 },
-                            { delay: 3000, type: "wraith",   count: 2, rate: 500 },
-                            { delay: 4000, type: "icetiger", count: 2, rate: 600 },
-                            { delay: 5000, type: "moab",     count: 1, rate: 1000 },
+                            { delay: 0, type: "fast", count: 10, rate: 350 },
+                            { delay: 2000, type: "wraith", count: 3, rate: 700 }
                         ]
                     });
                     continue;
                 }
-                // ────────────────────────────────────────────────────────
 
+                if (i === 22) {
+                    waves.push({
+                        pattern: [
+                            { delay: 0, type: "fast", count: 12, rate: 350 },
+                            { delay: 2000, type: "icetiger", count: 2, rate: 900 }
+                        ]
+                    });
+                    continue;
+                }
+
+                if (i === 30) {
+                    waves.push({
+                        pattern: [
+                            { delay: 0, type: "fast", count: 15, rate: 300 },
+                            { delay: 2500, type: "moab", count: 1, rate: 1200 }
+                        ]
+                    });
+                    continue;
+                }
+
+                // --- NORMAL WAVES ---
                 waves.push({
                     pattern: [
-                        { delay: 0,    type: "basic",    count: basicCount,    rate: 350 },
-                        { delay: 1500, type: "fast",     count: fastCount,     rate: 250 },
-                        ...(golemCount    > 0 ? [{ delay: 4000, type: "golem",    count: golemCount,    rate: 800  }] : []),
-                        ...(wraithCount   > 0 ? [{ delay: 2500, type: "wraith",   count: wraithCount,   rate: 500  }] : []),
-                        ...(iceTigerCount > 0 ? [{ delay: 3500, type: "icetiger", count: iceTigerCount, rate: 600  }] : []),
-                        ...(moabCount     > 0 ? [{ delay: 6000, type: "moab",     count: moabCount,     rate: 1000 }] : []),
+                        { delay: 0, type: "basic", count: basicCount, rate: 450 },
+                        ...(fastCount > 0 ? [{ delay: 1500, type: "fast", count: fastCount, rate: 400 }] : []),
+                        ...(golemCount > 0 ? [{ delay: 4000, type: "golem", count: golemCount, rate: 900 }] : []),
+                        ...(wraithCount > 0 ? [{ delay: 3000, type: "wraith", count: wraithCount, rate: 650 }] : []),
+                        ...(iceTigerCount > 0 ? [{ delay: 3500, type: "icetiger", count: iceTigerCount, rate: 750 }] : []),
+                        ...(moabCount > 0 ? [{ delay: 6000, type: "moab", count: moabCount, rate: 1300 }] : []),
+                    ]
+                });
+            }
+
+            return waves;
+        }
+        // ========================= NORMAL ===========================
+        if (diff === "NORMAL") {
+            const waves = [];
+
+            for (let i = 1; i <= 50; i++) {
+
+                const basicCount = 12 + i * 3;
+                const fastCount  = 4 + Math.floor(i * 0.8);
+                const golemCount = i % 7 === 0 ? Math.floor(i / 10) + 1 : 0;
+
+                // --- REAL APPEARANCE START ---
+                const wraithCount    = i >= 18 ? Math.floor((i - 18) / 5) + 1 : 0;
+                const iceTigerCount  = i >= 28 ? Math.floor((i - 28) / 6) + 1 : 0;
+                const moabCount      = i >= 35 && (i % 10 === 0) ? Math.floor(i / 10) : 0;
+
+                // --- INTRO WAVES ---
+                if (i === 15) {
+                    waves.push({
+                        pattern: [
+                            { delay: 0, type: "fast", count: 15, rate: 250 },
+                            { delay: 2000, type: "wraith", count: 3, rate: 500 }
+                        ]
+                    });
+                    continue;
+                }
+
+                if (i === 22) {
+                    waves.push({
+                        pattern: [
+                            { delay: 0, type: "fast", count: 18, rate: 250 },
+                            { delay: 2000, type: "icetiger", count: 3, rate: 600 }
+                        ]
+                    });
+                    continue;
+                }
+
+                if (i === 30) {
+                    waves.push({
+                        pattern: [
+                            { delay: 0, type: "fast", count: 20, rate: 220 },
+                            { delay: 2500, type: "moab", count: 1, rate: 1000 }
+                        ]
+                    });
+                    continue;
+                }
+
+                // --- NORMAL WAVES ---
+                waves.push({
+                    pattern: [
+                        { delay: 0, type: "basic", count: basicCount, rate: 350 },
+                        { delay: 1500, type: "fast", count: fastCount, rate: 250 },
+                        ...(golemCount > 0 ? [{ delay: 4000, type: "golem", count: golemCount, rate: 800 }] : []),
+                        ...(wraithCount > 0 ? [{ delay: 2500, type: "wraith", count: wraithCount, rate: 500 }] : []),
+                        ...(iceTigerCount > 0 ? [{ delay: 3500, type: "icetiger", count: iceTigerCount, rate: 600 }] : []),
+                        ...(moabCount > 0 ? [{ delay: 6000, type: "moab", count: moabCount, rate: 1000 }] : []),
                     ]
                 });
             }
@@ -100,27 +149,72 @@ export default class WaveManager {
             return waves;
         }
 
-        // ============================================================
         // =========================== HARD ===========================
-        // ============================================================
+
         const waves = [];
 
         for (let i = 1; i <= 50; i++) {
-            const basicCount    = 20 + i * 4;
-            const fastCount     = 10 + Math.floor(i * 1.2);
-            const golemCount    = Math.floor(i / 5);
-            // New enemies — present from wave 1 on Hard
-            const wraithCount   = 3 + Math.floor(i * 0.6);
-            const iceTigerCount = 2 + Math.floor(i * 0.4);
-            const moabCount     = i % 5 === 0 ? Math.floor(i / 5) : 0; // every 5 waves
 
+            // Showcase wave
+            if( i == 1){
+                waves.push({
+                    pattern: [
+                        { delay: 0, type: "fast", count: 12, rate:200 },
+                        { delay: 1500, type: "wraith", count: 3, rate: 500},
+                        { delay: 2500, type: "icetiger", count: 2, rate: 700},
+                        { delay: 3500, type: "moab", count: 1, rate: 900}
+                    ]
+                });
+            }
+
+            const basicCount = 20 + i * 4;
+            const fastCount  = 10 + Math.floor(i * 1.2);
+            const golemCount = Math.floor(i / 5);
+
+            // --- REAL APPEARANCE START ---
+            const wraithCount    = i >= 10 ? Math.floor((i - 10) / 3) + 2 : 0;
+            const iceTigerCount  = i >= 18 ? Math.floor((i - 18) / 4) + 2 : 0;
+            const moabCount      = i >= 25 && (i % 5 === 0) ? Math.floor(i / 5) : 0;
+
+            // --- INTRO WAVES ---
+            if (i === 10) {
+                waves.push({
+                    pattern: [
+                        { delay: 0, type: "fast", count: 20, rate: 180 },
+                        { delay: 2000, type: "wraith", count: 4, rate: 400 }
+                    ]
+                });
+                continue;
+            }
+
+            if (i === 15) {
+                waves.push({
+                    pattern: [
+                        { delay: 0, type: "fast", count: 25, rate: 180 },
+                        { delay: 2000, type: "icetiger", count: 3, rate: 450 }
+                    ]
+                });
+                continue;
+            }
+
+            if (i === 20) {
+                waves.push({
+                    pattern: [
+                        { delay: 0, type: "fast", count: 30, rate: 160 },
+                        { delay: 2500, type: "moab", count: 1, rate: 800 }
+                    ]
+                });
+                continue;
+            }
+
+            // --- NORMAL WAVES ---
             waves.push({
                 pattern: [
-                    { delay: 0,    type: "fast",     count: fastCount,     rate: 180  },
-                    { delay: 1200, type: "basic",    count: basicCount,    rate: 220  },
-                    { delay: 2000, type: "wraith",   count: wraithCount,   rate: 300  },
-                    { delay: 3000, type: "icetiger", count: iceTigerCount, rate: 420  },
-                    { delay: 3500, type: "golem",    count: golemCount,    rate: 650  },
+                    { delay: 0, type: "fast", count: fastCount, rate: 180 },
+                    { delay: 1200, type: "basic", count: basicCount, rate: 220 },
+                    ...(wraithCount > 0 ? [{ delay: 2000, type: "wraith", count: wraithCount, rate: 300 }] : []),
+                    ...(iceTigerCount > 0 ? [{ delay: 3000, type: "icetiger", count: iceTigerCount, rate: 420 }] : []),
+                    { delay: 3500, type: "golem", count: golemCount, rate: 650 },
                     ...(moabCount > 0 ? [{ delay: 5500, type: "moab", count: moabCount, rate: 800 }] : []),
                 ]
             });
@@ -129,7 +223,9 @@ export default class WaveManager {
         return waves;
     }
 
-
+    // ============================================================
+    // WAVE CONTROL LOGIC (unchanged)
+    // ============================================================
     startNextWave() {
         if (!this.waveFinished && this.currentWaveIndex >= 0) return;
 
