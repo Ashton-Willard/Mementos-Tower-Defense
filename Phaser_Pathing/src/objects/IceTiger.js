@@ -1,30 +1,30 @@
 import HealthBar from "./HealthBar.js";
 
-export default class MirrorWraith extends Phaser.GameObjects.Image {
+export default class IceTiger extends Phaser.GameObjects.Image {
     constructor(scene) {
-        super(scene, 0, 0, 'mirrorwraith');
+        super(scene, 0, 0, 'icetiger');
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.speed = 0.000065;   // faster than basic (0.00003)
+        this.speed = 0.000055;   // fast — between fast enemy and basic
 
-        this.maxHp = 280;
-        this.hp = 280;
+        this.maxHp = 420;
+        this.hp = 420;
 
         this.follower = { t: 0, vec: new Phaser.Math.Vector2() };
 
         this.healthbar = new HealthBar(scene, this);
 
-        this.reward = 45;
+        this.reward = 60;
         this.leakDamage = 2;
 
-        // Phase mechanic — toggles every 3 seconds
-        this._phaseTimer = 0;
-        this._phased = false;
+        // Frost aura — check with isInFrostAura(towerX, towerY) from your tower logic
+        this.frostRadius = 120;
+        this.frostSlowMult = 0.5;   // towers in range fire at 50% speed
+        this.frostDuration = 2000;
 
-        this.setScale(0.08);
-        this.setAlpha(0.95);
+        this.setScale(0.10);
     }
 
     startOnPath(path) {
@@ -36,14 +36,6 @@ export default class MirrorWraith extends Phaser.GameObjects.Image {
 
     update(time, delta, path, isPaused) {
         if (isPaused) return;
-
-        // Phase pulse — goes semi-transparent and takes half damage
-        this._phaseTimer += delta;
-        if (this._phaseTimer >= 3000) {
-            this._phaseTimer = 0;
-            this._phased = !this._phased;
-            this.setAlpha(this._phased ? 0.35 : 0.95);
-        }
 
         this.follower.t += this.speed * delta;
 
@@ -78,9 +70,7 @@ export default class MirrorWraith extends Phaser.GameObjects.Image {
     }
 
     receiveDamage(amount) {
-        // Take half damage while phased
-        const effective = this._phased ? Math.floor(amount * 0.5) : amount;
-        this.hp -= effective;
+        this.hp -= amount;
 
         if (this.hp <= 0) {
             this.setActive(false);
@@ -89,6 +79,14 @@ export default class MirrorWraith extends Phaser.GameObjects.Image {
             this.healthbar.destroy();
             this.die(true);
         }
+    }
+
+    // Call from your tower logic to check if a tower is in frost range
+    isInFrostAura(towerX, towerY) {
+        if (!this.active) return false;
+        const dx = towerX - this.x;
+        const dy = towerY - this.y;
+        return (dx * dx + dy * dy) <= (this.frostRadius * this.frostRadius);
     }
 
     die(giveGold = true) {

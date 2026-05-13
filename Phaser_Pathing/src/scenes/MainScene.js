@@ -14,9 +14,9 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload() {
-     this.load.image('bullet',     'src/assets/bullet.png');
-this.load.image('firebullet', 'src/assets/firebullet.png');
-this.load.image('icebullet',  'src/assets/icebullet.png');  
+        this.load.image('bullet',     'src/assets/bullet.png');
+        this.load.image('firebullet', 'src/assets/firebullet.png');
+        this.load.image('icebullet',  'src/assets/icebullet.png');
         this.load.image('tiles',      'src/assets/tiles.png');
         this.load.image('enemy',      'src/assets/enemy.png');
 
@@ -24,11 +24,14 @@ this.load.image('icebullet',  'src/assets/icebullet.png');
         this.load.tilemapTiledJSON('map2', 'src/assets/maps/Map2.tmj');
         this.load.image('BloonsCutMap1.png', 'src/assets/maps/BloonsCutMap1.png');
 
-this.load.image('enemy_shadow', 'src/assets/enemies/enemy_shadow.png');
-this.load.image('shaderunner',  'src/assets/enemies/shaderunner.png');
-this.load.image('irongolem',    'src/assets/enemies/irongolem.png');
+        this.load.image('enemy_shadow', 'src/assets/enemies/enemy_shadow.png');
+        this.load.image('shaderunner',  'src/assets/enemies/shaderunner.png');
+        this.load.image('irongolem',    'src/assets/enemies/irongolem.png');
+        this.load.image('moab',         'src/assets/enemies/moab.png');
+        this.load.image('mirrorwraith', 'src/assets/enemies/mirrorwraith.png');
+        this.load.image('icetiger',     'src/assets/enemies/icetiger.png');
 
-        this.load.atlas('turret', 'src/assets/spritesheet2.png', 'src/assets/spritesheet.json');
+        this.load.atlas('turret',   'src/assets/spritesheet2.png',  'src/assets/spritesheet.json');
         this.load.atlas('turretup', 'src/assets/spritesheetup.png', 'src/assets/spritesheetup.json');
     }
 
@@ -42,11 +45,11 @@ this.load.image('irongolem',    'src/assets/enemies/irongolem.png');
         this.keyF2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F2);
         this.keyF3 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F3);
 
-        const screenW    = this.scale.width;
-        const screenH    = this.scale.height;
-        const SIDEBAR_W  = Math.round(screenW * 0.20);
-        const GAME_W     = screenW - SIDEBAR_W;
-        const sidebarX   = GAME_W;
+        const screenW   = this.scale.width;
+        const screenH   = this.scale.height;
+        const SIDEBAR_W = Math.round(screenW * 0.20);
+        const GAME_W    = screenW - SIDEBAR_W;
+        const sidebarX  = GAME_W;
 
         // ── TILEMAP ───────────────────────────────────────────────────
         this.map = this.make.tilemap({ key: this.selectedMap });
@@ -56,7 +59,6 @@ this.load.image('irongolem',    'src/assets/enemies/irongolem.png');
         const scaleY   = screenH / this.map.heightInPixels;
         const mapScale = Math.max(scaleX, scaleY);
 
-        // Map2 uses a background image instead of Tile Layer 1
         if (this.selectedMap === 'map2') {
             const img = this.add.image(0, 0, 'BloonsCutMap1.png')
                 .setOrigin(0).setDepth(-10).setScale(mapScale);
@@ -68,7 +70,6 @@ this.load.image('irongolem',    'src/assets/enemies/irongolem.png');
         baseLayer.setScale(mapScale);
         baseLayer.setVisible(this.selectedMap !== 'map2');
 
-        // Map1 has an explicit Pathing layer to display
         if (this.selectedMap === 'map1' && this.map.getLayerIndex('Pathing') !== -1) {
             const pathLayer = this.map.createLayer('Pathing', tileset);
             pathLayer.setScale(mapScale);
@@ -80,8 +81,6 @@ this.load.image('irongolem',    'src/assets/enemies/irongolem.png');
         this.cameras.main.setZoom(1);
 
         // ── PATH MANAGER ──────────────────────────────────────────────
-        // PathManager owns the Phaser Path and blocked-tile set.
-        // canPlace(worldX, worldY) is the only placement check needed.
         this.pathManager = new PathManager(this, mapScale);
         this.path        = this.pathManager.path;
         this.gridSize    = 64 * mapScale;
@@ -98,6 +97,13 @@ this.load.image('irongolem',    'src/assets/enemies/irongolem.png');
         this.livesText = this.add.text(16, 82, `❤ ${this.lives}`, {
             fontSize: '18px', fontFamily: 'monospace',
             color: '#ff6666', stroke: '#000000', strokeThickness: 4
+        }).setScrollFactor(0).setDepth(9999);
+
+        // ── WAVE COUNTER ──────────────────────────────────────────────
+        this.totalWaves = 50;
+        this.waveText = this.add.text(16, 16, `Wave 0 / ${this.totalWaves}`, {
+            fontSize: '18px', fontFamily: 'monospace',
+            color: '#ffffff', stroke: '#000000', strokeThickness: 4
         }).setScrollFactor(0).setDepth(9999);
 
         // ── START WAVE BUTTON ─────────────────────────────────────────
@@ -119,15 +125,15 @@ this.load.image('irongolem',    'src/assets/enemies/irongolem.png');
         this.enemies     = this.physics.add.group({ classType: Enemy });
         this.bullets     = this.physics.add.group({ classType: Bullet,     runChildUpdate: false });
         this.fireBullets = this.physics.add.group({ classType: FireBullet, runChildUpdate: false });
-this.iceBullets = this.physics.add.group({ classType: IceBullet, runChildUpdate: false });
-this.physics.add.overlap(this.enemies, this.iceBullets, this.damageEnemy, null, this);
-        this.turrets     = this.add.group();
+        this.iceBullets  = this.physics.add.group({ classType: IceBullet,  runChildUpdate: false });
+
+        this.physics.add.overlap(this.enemies, this.iceBullets,  this.damageEnemy, null, this);
+        this.turrets = this.add.group();
 
         this.physics.add.overlap(this.enemies, this.bullets,     this.damageEnemy, null, this);
         this.physics.add.overlap(this.enemies, this.fireBullets, this.damageEnemy, null, this);
 
         // ── SIDEBAR ───────────────────────────────────────────────────
-        // Gradient fade at game/sidebar boundary
         const fadeW = 60;
         const grad  = this.add.graphics().setScrollFactor(0).setDepth(9997);
         for (let i = 0; i < fadeW; i++) {
@@ -194,12 +200,17 @@ this.physics.add.overlap(this.enemies, this.iceBullets, this.damageEnemy, null, 
             icon.towerType = type;
         });
 
-        // ── DRAG SYSTEM (raw pointer — instant, no threshold) ─────────
+        // ── DRAG SYSTEM ───────────────────────────────────────────────
         this._drag = null;
         const GRID_SIZE  = this.gridSize;
         const GHOST_SIZE = GRID_SIZE * 0.8;
 
         this.input.on('pointerdown', (pointer, targets) => {
+            // ── KEY FIX: ignore clicks on already-placed turrets ──────
+            // Without this, clicking a turret both opens the upgrade UI
+            // AND starts a drag, which deducts gold unexpectedly.
+            if (targets.some(t => t instanceof Turret)) return;
+
             const icon = targets.find(t => t.towerType);
             if (!icon) return;
 
@@ -247,6 +258,8 @@ this.physics.add.overlap(this.enemies, this.iceBullets, this.damageEnemy, null, 
                     const turret = new Turret(this, type);
                     this.turrets.add(turret);
                     turret.bulletType = data.bulletType;
+                    turret.towerType  = type;
+                    turret.baseCost   = data.cost;
                     turret.setPosition(sx, sy);
 
                     this.money -= data.cost;
@@ -297,7 +310,6 @@ this.physics.add.overlap(this.enemies, this.iceBullets, this.damageEnemy, null, 
         this.pauseContainer.add([panel, resumeBtn, exitBtn]);
         this.pauseContainer.setVisible(false);
 
-        // ESC toggles pause
         this.escapeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
         this.escapeKey.on('down', () => {
             this.isPaused ? this.resumeGame() : this.pauseGame();
@@ -333,42 +345,76 @@ this.physics.add.overlap(this.enemies, this.iceBullets, this.damageEnemy, null, 
         ) || null;
     }
 
- 
-spawnBullet(turret, x, y, angle, opts = {}) {
-    const damage = opts.damage ?? turret.damage;
+    spawnBullet(turret, x, y, angle, opts = {}) {
+        const damage = opts.damage ?? turret.damage;
 
-    if (turret.bulletType === 'firebullet') {
-        const bullet = this.fireBullets.get();
-        if (!bullet) return;
-        bullet.init('firebullet', { speed: 600 });
-        bullet.fire(x, y, angle, damage);
-    } else if (turret.bulletType === 'icebullet') {
-        const bullet = this.iceBullets.get();
-        if (!bullet) return;
-        bullet.fire(x, y, angle, damage);
-    } else {
-        const bullet = this.bullets.get();
-        if (!bullet) return;
-        bullet.fire(x, y, angle, damage);
+        if (turret.bulletType === 'firebullet') {
+            const bullet = this.fireBullets.get();
+            if (!bullet) return;
+            bullet.init('firebullet', { speed: 600 });
+            bullet.fire(x, y, angle, damage);
+        } else if (turret.bulletType === 'icebullet') {
+            const bullet = this.iceBullets.get();
+            if (!bullet) return;
+            bullet.fire(x, y, angle, damage);
+        } else {
+            const bullet = this.bullets.get();
+            if (!bullet) return;
+            bullet.fire(x, y, angle, damage);
+        }
     }
-}
- 
-damageEnemy(enemy, bullet) {
-    if (!enemy.active || !bullet.active) return;
- 
-    enemy.receiveDamage(bullet.damage);
- 
-    if (bullet.texture?.key === 'firebullet') {
-        this.enemies.getChildren().forEach(e => {
-            if (!e.active || e === enemy) return;
-            if (Phaser.Math.Distance.Between(enemy.x, enemy.y, e.x, e.y) <= 80)
-                e.receiveDamage(Math.floor(bullet.damage * 0.5));
+
+    damageEnemy(enemy, bullet) {
+        if (!enemy.active || !bullet.active) return;
+
+        enemy.receiveDamage(bullet.damage);
+
+        if (bullet.texture?.key === 'firebullet') {
+            this.enemies.getChildren().forEach(e => {
+                if (!e.active || e === enemy) return;
+                if (Phaser.Math.Distance.Between(enemy.x, enemy.y, e.x, e.y) <= 80)
+                    e.receiveDamage(Math.floor(bullet.damage * 0.5));
+            });
+            bullet.deactivate?.();
+        } else {
+            bullet.disableBody(true, true);
+        }
+    }
+
+    // Called by TowerUpgradeUI sell button
+    sellTower(turret) {
+        const sellPrice = Math.floor((turret.baseCost ?? 0) / 2);
+
+        // Floating gold popup
+        const popup = this.add.text(turret.x, turret.y - 10, `+$${sellPrice}`, {
+            fontSize: '20px', fontFamily: 'monospace',
+            color: '#f0c040', stroke: '#000000', strokeThickness: 4
+        }).setDepth(99999);
+
+        this.tweens.add({
+            targets: popup,
+            y: turret.y - 60,
+            alpha: 0,
+            duration: 800,
+            ease: 'Quad.easeOut',
+            onComplete: () => popup.destroy()
         });
-        bullet.deactivate?.();
-    } else {
-        bullet.disableBody(true, true);
+
+        this.addGold(sellPrice);
+
+        // Close upgrade UI first so it drops its reference before destroy
+        this.upgradeUI?.hide?.();
+
+        // Fully destroy the tower
+        this.turrets.remove(turret, true, true);
+        turret.destroy();
     }
-}
+
+    // Called by WaveManager.startNextWave — updates the wave counter text
+    onWaveStart(waveIndex) {
+        this.waveText?.setText(`Wave ${waveIndex} / ${this.totalWaves}`);
+    }
+
     addGold(amount) {
         this.money += amount;
         this.moneyText?.setText(`💰 $${this.money}`);

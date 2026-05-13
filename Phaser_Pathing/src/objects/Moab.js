@@ -1,30 +1,25 @@
 import HealthBar from "./HealthBar.js";
 
-export default class MirrorWraith extends Phaser.GameObjects.Image {
+export default class Moab extends Phaser.GameObjects.Image {
     constructor(scene) {
-        super(scene, 0, 0, 'mirrorwraith');
+        super(scene, 0, 0, 'moab');
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.speed = 0.000065;   // faster than basic (0.00003)
+        this.speed = 0.000012;   // ~40% of basic — slow blimp
 
-        this.maxHp = 280;
-        this.hp = 280;
+        this.maxHp = 600;
+        this.hp = 600;
 
         this.follower = { t: 0, vec: new Phaser.Math.Vector2() };
 
         this.healthbar = new HealthBar(scene, this);
 
-        this.reward = 45;
-        this.leakDamage = 2;
+        this.reward = 80;
+        this.leakDamage = 3;
 
-        // Phase mechanic — toggles every 3 seconds
-        this._phaseTimer = 0;
-        this._phased = false;
-
-        this.setScale(0.08);
-        this.setAlpha(0.95);
+        this.setScale(0.25);
     }
 
     startOnPath(path) {
@@ -36,14 +31,6 @@ export default class MirrorWraith extends Phaser.GameObjects.Image {
 
     update(time, delta, path, isPaused) {
         if (isPaused) return;
-
-        // Phase pulse — goes semi-transparent and takes half damage
-        this._phaseTimer += delta;
-        if (this._phaseTimer >= 3000) {
-            this._phaseTimer = 0;
-            this._phased = !this._phased;
-            this.setAlpha(this._phased ? 0.35 : 0.95);
-        }
 
         this.follower.t += this.speed * delta;
 
@@ -78,9 +65,7 @@ export default class MirrorWraith extends Phaser.GameObjects.Image {
     }
 
     receiveDamage(amount) {
-        // Take half damage while phased
-        const effective = this._phased ? Math.floor(amount * 0.5) : amount;
-        this.hp -= effective;
+        this.hp -= amount;
 
         if (this.hp <= 0) {
             this.setActive(false);

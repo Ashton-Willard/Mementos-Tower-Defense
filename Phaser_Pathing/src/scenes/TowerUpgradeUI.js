@@ -18,7 +18,7 @@ export default class TowerUpgradeUI {
 
     _buildPanel() {
         const scene = this.scene;
-        const W = 224, H = 340;
+        const W = 224, H = 390;   // +50 height to fit sell button
 
         // ── BACKGROUND ───────────────────────────────────────────────
         this.bg = scene.add.rectangle(0, 0, W, H, 0x1a1a2e, 0.97)
@@ -71,8 +71,7 @@ export default class TowerUpgradeUI {
         });
 
         // ── MASTER UPGRADE BUTTON ────────────────────────────────────
-        // Shown only when all 3 paths are maxed and not yet mastered
-        const masterY = 300;
+        const masterY    = 300;
         const masterColor = 0xffdd00;
 
         this.masterBg = scene.add.rectangle(W / 2, masterY, 200, 44, masterColor, 0.15)
@@ -92,10 +91,26 @@ export default class TowerUpgradeUI {
             fontSize: '9px', fontFamily: 'monospace', color: '#aaaaaa'
         }).setOrigin(0.5);
 
-        // Shown when already mastered
         this.masteredLabel = scene.add.text(W / 2, masterY, '✦ MASTERED', {
             fontSize: '13px', fontFamily: 'monospace',
             color: '#ffdd00', fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // ── SELL BUTTON ──────────────────────────────────────────────
+        const sellY     = 356;
+        const sellColor = 0xff4444;
+
+        this.sellBg = scene.add.rectangle(W / 2, sellY, 200, 34, sellColor, 0.15)
+            .setStrokeStyle(1, sellColor)
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => this.sellBg.setFillStyle(sellColor, 0.4))
+            .on('pointerout',  () => this.sellBg.setFillStyle(sellColor, 0.15))
+            .on('pointerdown', () => this._sell());
+
+        this.sellLabel = scene.add.text(W / 2, sellY, '', {
+            fontSize: '11px', fontFamily: 'monospace',
+            color: '#ff8888', fontStyle: 'bold'
         }).setOrigin(0.5);
 
         // ── CLOSE BUTTON ─────────────────────────────────────────────
@@ -111,9 +126,15 @@ export default class TowerUpgradeUI {
         const allObjects = [
             this.bg, this.titleText, this.statsText, this.closeBtn,
             this.masterBg, this.masterLabel, this.masterCost, this.masteredLabel,
+            this.sellBg, this.sellLabel,
             ...Object.values(this.buttons).flatMap(b => [b.btn, b.btnLabel, b.pips, b.cost])
         ];
         this.container = scene.add.container(0, 0, allObjects).setDepth(10000);
+    }
+
+    _sell() {
+        if (!this.tower) return;
+        this.scene.sellTower(this.tower);  // hands off to MainScene
     }
 
     _upgrade(path) {
@@ -125,7 +146,6 @@ export default class TowerUpgradeUI {
         const cost = this.tower.upgradeDefinitions[path].costs[level];
 
         if (this.scene.money < cost) {
-            // Flash money text red
             this.scene.tweens.add({
                 targets: this.scene.moneyText,
                 alpha: 0.2, yoyo: true, duration: 80, repeat: 2
@@ -159,7 +179,6 @@ export default class TowerUpgradeUI {
         this.tower.applyMasterUpgrade();
         this._refresh();
 
-        // Briefly flash the panel gold
         this.scene.tweens.add({
             targets: this.bg,
             strokeColor: 0xffdd00,
@@ -214,6 +233,10 @@ export default class TowerUpgradeUI {
             this.masterLabel.setText(`✦ ${t.masterDefinition.label}`);
             this.masterCost.setText(`Cost: $${t.masterDefinition.cost}`);
         }
+
+        // Sell button — shows half of baseCost
+        const sellPrice = Math.floor((t.baseCost ?? 0) / 2);
+        this.sellLabel.setText(`🪙 Sell  $${sellPrice}`);
     }
 
     show(tower) {
@@ -221,7 +244,7 @@ export default class TowerUpgradeUI {
         this.visible = true;
 
         const cam = this.scene.cameras.main;
-        const W = 224, H = 340;
+        const W = 224, H = 390;
 
         let px = tower.x + 40;
         let py = tower.y - H / 2;
@@ -244,4 +267,4 @@ export default class TowerUpgradeUI {
             onComplete: () => this.container?.setVisible(false)
         });
     }
-}
+}   

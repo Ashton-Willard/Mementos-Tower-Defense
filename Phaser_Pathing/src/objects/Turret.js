@@ -99,8 +99,11 @@ export default class Turret extends Phaser.GameObjects.Sprite {
         this.clearTint();
         this.setAlpha(1);
 
-        this.setInteractive();
-        this.on('pointerdown', () => scene.events.emit('towerSelected', this));
+      this.setInteractive();
+this.on('pointerdown', (pointer, localX, localY, event) => {
+    event.stopPropagation();
+    scene.events.emit('towerSelected', this);
+});
     }
 
     place(row, col) {

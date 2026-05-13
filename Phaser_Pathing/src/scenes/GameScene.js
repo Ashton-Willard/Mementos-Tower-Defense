@@ -13,6 +13,9 @@ export default class GameScene extends Phaser.Scene {
         // Placeholder map images
         this.load.image('map1', 'src/assets/maps/map1.png');
         this.load.image('map2', 'src/assets/maps/BloonsCutMap1.png');
+        // GameScene preload() is missing these two lines:
+this.load.atlas('turret',   'src/assets/spritesheet2.png',  'src/assets/spritesheet.json');
+this.load.atlas('turretup', 'src/assets/spritesheetup.png', 'src/assets/spritesheetup.json');
     }
 
     create() {
