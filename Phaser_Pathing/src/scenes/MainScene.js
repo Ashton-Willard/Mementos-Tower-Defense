@@ -325,8 +325,9 @@ export default class MainScene extends Phaser.Scene {
           .on('pointerover', function () { this.setStyle({ color: '#ff6666' }); })
           .on('pointerout',  function () { this.setStyle({ color: '#ffffff' }); })
           .on('pointerdown', () => {
+              this.resumeGame();
               this.scene.stop('MainScene');
-              this.scene.start('MenuScene');
+              this.scene.start('GameScene');
           });
 
         this.pauseContainer.add([panel, resumeBtn, exitBtn]);
