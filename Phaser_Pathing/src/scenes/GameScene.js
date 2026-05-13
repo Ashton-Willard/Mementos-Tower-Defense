@@ -37,25 +37,6 @@ this.load.atlas('turretup', 'src/assets/spritesheetup.png', 'src/assets/spritesh
             0.45
         );
 
-        // Subtle red pulse overlay
-const pulseOverlay = this.add.rectangle(
-    W / 2,
-    H / 2,
-    W,
-    H,
-    0xff0000,
-    0.04
-);
-
-this.tweens.add({
-    targets: pulseOverlay,
-    alpha: { from: 0.02, to: 0.08 },
-    duration: 2200,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.easeInOut'
-});
-
         // ============================================================
         // AUTHENTICATION: LOGOUT BUTTON (Top-right corner)
         // ============================================================
@@ -124,48 +105,6 @@ this.tweens.add({
             ease: 'Sine.easeInOut'
         });
 
-
-        const glow = this.add.circle(
-    enemy.x,
-    enemy.y,
-    180,
-    0xff0000,
-    0.08
-);
-
-this.tweens.add({
-    targets: glow,
-    scale: { from: 0.9, to: 1.15 },
-    alpha: { from: 0.04, to: 0.12 },
-    duration: 2000,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.easeInOut'
-});
-
-glow.setDepth(enemy.depth - 1);
-        // Ambient floating particles
-for (let i = 0; i < 24; i++) {
-    const p = this.add.circle(
-        Phaser.Math.Between(0, W),
-        Phaser.Math.Between(0, H),
-        Phaser.Math.Between(2, 5),
-        0xff2a2a,
-        0.08
-    );
-
-    this.tweens.add({
-        targets: p,
-        y: p.y - Phaser.Math.Between(40, 120),
-        x: p.x + Phaser.Math.Between(-40, 40),
-        alpha: { from: 0.02, to: 0.12 },
-        duration: Phaser.Math.Between(4000, 7000),
-        repeat: -1,
-        yoyo: true,
-        ease: 'Sine.easeInOut'
-    });
-}
-
         // ============================================================
         // PAGE CREATION
         // ============================================================
@@ -214,91 +153,17 @@ for (let i = 0; i < 24; i++) {
         // ============================================================
         // MENU BUTTONS
         // ============================================================
-    const createMenuButton = (label, x, callback) => {
+        const createMenuButton = (label, x, callback) => {
+            const text = this.add.text(x, H * 0.82, label, {
+                fontFamily: 'Arial', fontSize: '36px', color: '#ffffff'
+            }).setOrigin(0.5);
 
-    const container = this.add.container(x, H * 0.82);
-
-    const bg = this.add.rectangle(
-        0,
-        0,
-        170,
-        60,
-        0x111111,
-        0.75
-    )
-    .setStrokeStyle(2, 0xff2a2a, 0.35);
-
-    const glow = this.add.rectangle(
-        0,
-        0,
-        170,
-        60,
-        0xff0000,
-        0.08
-    );
-
-    const text = this.add.text(
-        0,
-        0,
-        label,
-        {
-            fontFamily: 'Arial',
-            fontSize: '28px',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        }
-    ).setOrigin(0.5);
-
-    container.add([glow, bg, text]);
-
-    bg.setInteractive({ useHandCursor: true });
-
-    bg.on('pointerover', () => {
-
-        this.tweens.add({
-            targets: container,
-            scale: 1.06,
-            duration: 120
-        });
-
-        this.tweens.add({
-            targets: glow,
-            alpha: 0.18,
-            duration: 120
-        });
-
-        this.tweens.add({
-            targets: bg,
-            strokeAlpha: 1,
-            duration: 120
-        });
-    });
-
-    bg.on('pointerout', () => {
-
-        this.tweens.add({
-            targets: container,
-            scale: 1,
-            duration: 120
-        });
-
-        this.tweens.add({
-            targets: glow,
-            alpha: 0.08,
-            duration: 120
-        });
-
-        this.tweens.add({
-            targets: bg,
-            strokeAlpha: 0.35,
-            duration: 120
-        });
-    });
-
-    bg.on('pointerdown', callback);
-
-    return container;
-};
+            text.setInteractive({ useHandCursor: true });
+            text.on('pointerover', () => this.tweens.add({ targets: text, scale: 1.08, duration: 120 }));
+            text.on('pointerout',  () => this.tweens.add({ targets: text, scale: 1,    duration: 120 }));
+            text.on('pointerdown', callback);
+            return text;
+        };
 
         const spacing = W / 6;
 
@@ -473,26 +338,6 @@ for (let i = 0; i < 24; i++) {
             towerDetailObjs.forEach(o => o.destroy());
             towerDetailObjs = [];
         };
-
-        // Top cinematic bar
-this.add.rectangle(
-    W / 2,
-    25,
-    W,
-    50,
-    0x000000,
-    0.85
-);
-
-// Bottom cinematic bar
-this.add.rectangle(
-    W / 2,
-    H - 25,
-    W,
-    50,
-    0x000000,
-    0.85
-);
 
         // ── RIGHT: detail panel background ───────────────────────────
         const detailPanelX = W * 0.62;
@@ -670,222 +515,106 @@ this.add.rectangle(
             stroke: '#000000', strokeThickness: 8
         }).setOrigin(0.5);
         this.upgradesPage.add(upgradesTitle);
-const upgradeData = {
 
-lightningtower: {
-    label: 'Lightning Tower', cost: 100,
-    upgrades: [
-        { label: 'Chain Strike', path: 'damage', tier: 'Lv 1 / $75', desc: 'Chain lightning arcs.', stats: [
-            { n: 'Damage', b: 15, a: 18 },
-            { n: 'Range', b: 1000, a: 1150, u: '+150' },
-            { n: 'Fire rate', b: 200, a: 200 }
-        ]},
-        { label: 'Chain Strike II', path: 'damage', tier: 'Lv 2 / $200', desc: 'Stronger chaining.', stats: [
-            { n: 'Damage', b: 18, a: 22 },
-            { n: 'Range', b: 1150, a: 1300, u: '+150' },
-            { n: 'Fire rate', b: 200, a: 200 }
-        ]},
-        { label: 'Overclock II', path: 'speed', tier: 'Lv 2 / $250', desc: 'Faster discharge.', stats: [
-            { n: 'Damage', b: 15, a: 15 },
-            { n: 'Range', b: 1300, a: 1400, u: '+100' },
-            { n: 'Fire rate', b: 170, a: 140, u: '-30ms' }
-        ]},
-        { label: 'Broadcast II', path: 'range', tier: 'Lv 2 / $175', desc: 'Massive detection field.', stats: [
-            { n: 'Damage', b: 15, a: 15 },
-            { n: 'Range', b: 1400, a: 1550, u: '+150' },
-            { n: 'Fire rate', b: 200, a: 200 }
-        ]},
-        { label: 'Storm God (Master)', path: 'master', tier: '$2100', desc: 'Chain storm overload.', stats: [
-            { n: 'Damage', b: 22, a: 34, u: '×1.5' },
-            { n: 'Range', b: 1550, a: 1750, u: '+200' },
-            { n: 'Fire rate', b: 140, a: 115, u: '×0.82' }
-        ]}
-    ]
-},
+        const upgradeData = {
+            lightningtower: {
+                label: 'Lightning Tower', cost: 100,
+                upgrades: [
+                    { label: 'Chain Strike',       path: 'damage', tier: 'Lv 1 / $75',  desc: 'Adds arc damage that chains to nearby enemies.', stats: [{ n: 'Damage', b: 15, a: 23, u: '+8' }, { n: 'Range', b: 1000, a: 1000 }, { n: 'Fire rate', b: 200, a: 200 }] },
+                    { label: 'Chain Strike II',    path: 'damage', tier: 'Lv 2 / $200', desc: 'Further boosts chain damage for devastating multi-hit combos.', stats: [{ n: 'Damage', b: 23, a: 31, u: '+8' }, { n: 'Range', b: 1000, a: 1000 }, { n: 'Fire rate', b: 200, a: 200 }] },
+                    { label: 'Overclock',          path: 'speed',  tier: 'Lv 1 / $100', desc: 'Overclocks internal timing circuits. Fires significantly faster.', stats: [{ n: 'Damage', b: 15, a: 15 }, { n: 'Range', b: 1000, a: 1000 }, { n: 'Fire rate', b: 200, a: 140, u: '-60ms' }] },
+                    { label: 'Overclock II',       path: 'speed',  tier: 'Lv 2 / $250', desc: 'Pushes the tower to its operational limit for near-instant firing.', stats: [{ n: 'Damage', b: 15, a: 15 }, { n: 'Range', b: 1000, a: 1000 }, { n: 'Fire rate', b: 140, a: 80, u: '-60ms' }] },
+                    { label: 'Broadcast',          path: 'range',  tier: 'Lv 1 / $60',  desc: 'Extends signal radius to target enemies further down the path.', stats: [{ n: 'Damage', b: 15, a: 15 }, { n: 'Range', b: 1000, a: 1200, u: '+200' }, { n: 'Fire rate', b: 200, a: 200 }] },
+                    { label: 'Broadcast II',       path: 'range',  tier: 'Lv 2 / $175', desc: 'Full-field broadcast — almost no enemy escapes detection range.', stats: [{ n: 'Damage', b: 15, a: 15 }, { n: 'Range', b: 1200, a: 1400, u: '+200' }, { n: 'Fire rate', b: 200, a: 200 }] },
+                    { label: 'Storm God (Master)', path: 'master', tier: '$500',         desc: 'Unlocks full storm form. Massive across-the-board amplification.', stats: [{ n: 'Damage', b: 31, a: 77, u: '×2.5' }, { n: 'Range', b: 1400, a: 1700, u: '+300' }, { n: 'Fire rate', b: 80, a: 32, u: '×0.4' }] },
+                ]
+            },
+            firetower: {
+                label: 'Fire Tower', cost: 150,
+                upgrades: [
+                    { label: 'Inferno',           path: 'damage', tier: 'Lv 1 / $80',  desc: 'Superheats projectiles for increased burn damage on impact.', stats: [{ n: 'Damage', b: 20, a: 32, u: '+12' }, { n: 'Range', b: 250, a: 250 }, { n: 'Fire rate', b: 400, a: 400 }] },
+                    { label: 'Inferno II',        path: 'damage', tier: 'Lv 2 / $220', desc: 'Scorching core melts through armored enemies.', stats: [{ n: 'Damage', b: 32, a: 44, u: '+12' }, { n: 'Range', b: 250, a: 250 }, { n: 'Fire rate', b: 400, a: 400 }] },
+                    { label: 'Rapid Burn',        path: 'speed',  tier: 'Lv 1 / $90',  desc: 'Reduces reload time between fire blasts.', stats: [{ n: 'Damage', b: 20, a: 20 }, { n: 'Range', b: 250, a: 250 }, { n: 'Fire rate', b: 400, a: 300, u: '-100ms' }] },
+                    { label: 'Rapid Burn II',     path: 'speed',  tier: 'Lv 2 / $200', desc: 'Continuous fire stream with minimal cooldown.', stats: [{ n: 'Damage', b: 20, a: 20 }, { n: 'Range', b: 250, a: 250 }, { n: 'Fire rate', b: 300, a: 200, u: '-100ms' }] },
+                    { label: 'Spread',            path: 'range',  tier: 'Lv 1 / $70',  desc: 'Wider flame spread catches enemies across a larger area.', stats: [{ n: 'Damage', b: 20, a: 20 }, { n: 'Range', b: 250, a: 310, u: '+60' }, { n: 'Fire rate', b: 400, a: 400 }] },
+                    { label: 'Spread II',         path: 'range',  tier: 'Lv 2 / $180', desc: 'Extended reach ignites enemies before they get close.', stats: [{ n: 'Damage', b: 20, a: 20 }, { n: 'Range', b: 310, a: 370, u: '+60' }, { n: 'Fire rate', b: 400, a: 400 }] },
+                    { label: 'Infernal (Master)', path: 'master', tier: '$550',         desc: 'Unleashes hellfire. Splash radius triples, damage multiplied.', stats: [{ n: 'Damage', b: 44, a: 132, u: '×3.0' }, { n: 'Range', b: 370, a: 470, u: '+100' }, { n: 'Fire rate', b: 200, a: 120, u: '×0.6' }] },
+                ]
+            },
+            icetower: {
+                label: 'Ice Tower', cost: 120,
+                upgrades: [
+                    { label: 'Frostbite',              path: 'damage', tier: 'Lv 1 / $60',  desc: 'Deep-freeze coating increases shard damage.', stats: [{ n: 'Damage', b: 10, a: 16, u: '+6' }, { n: 'Range', b: 150, a: 150 }, { n: 'Fire rate', b: 800, a: 800 }] },
+                    { label: 'Frostbite II',           path: 'damage', tier: 'Lv 2 / $160', desc: 'Crystalline shards shatter on impact for extra damage.', stats: [{ n: 'Damage', b: 16, a: 22, u: '+6' }, { n: 'Range', b: 150, a: 150 }, { n: 'Fire rate', b: 800, a: 800 }] },
+                    { label: 'Blizzard',               path: 'speed',  tier: 'Lv 1 / $80',  desc: 'Rapid frost cycles fire shards faster.', stats: [{ n: 'Damage', b: 10, a: 10 }, { n: 'Range', b: 150, a: 150 }, { n: 'Fire rate', b: 800, a: 600, u: '-200ms' }] },
+                    { label: 'Blizzard II',            path: 'speed',  tier: 'Lv 2 / $200', desc: 'Full blizzard mode — relentless shard barrage.', stats: [{ n: 'Damage', b: 10, a: 10 }, { n: 'Range', b: 150, a: 150 }, { n: 'Fire rate', b: 600, a: 400, u: '-200ms' }] },
+                    { label: 'Arctic Reach',           path: 'range',  tier: 'Lv 1 / $70',  desc: 'Cold front extends the tower\'s effective range.', stats: [{ n: 'Damage', b: 10, a: 10 }, { n: 'Range', b: 150, a: 200, u: '+50' }, { n: 'Fire rate', b: 800, a: 800 }] },
+                    { label: 'Arctic Reach II',        path: 'range',  tier: 'Lv 2 / $175', desc: 'Sub-zero field slows and damages at long range.', stats: [{ n: 'Damage', b: 10, a: 10 }, { n: 'Range', b: 200, a: 250, u: '+50' }, { n: 'Fire rate', b: 800, a: 800 }] },
+                    { label: 'Absolute Zero (Master)', path: 'master', tier: '$450',         desc: 'Freezes all enemies on screen briefly. Massive damage boost.', stats: [{ n: 'Damage', b: 22, a: 44, u: '×2.0' }, { n: 'Range', b: 250, a: 400, u: '+150' }, { n: 'Fire rate', b: 400, a: 200, u: '×0.5' }] },
+                ]
+            },
+            rocktower: {
+                label: 'Rock Tower', cost: 200,
+                upgrades: [
+                    { label: 'Boulder',         path: 'damage', tier: 'Lv 1 / $100', desc: 'Larger rocks with greater mass hit harder.', stats: [{ n: 'Damage', b: 40, a: 60, u: '+20' }, { n: 'Range', b: 220, a: 220 }, { n: 'Fire rate', b: 1500, a: 1500 }] },
+                    { label: 'Boulder II',      path: 'damage', tier: 'Lv 2 / $300', desc: 'Titan-class boulders obliterate anything in their path.', stats: [{ n: 'Damage', b: 60, a: 80, u: '+20' }, { n: 'Range', b: 220, a: 220 }, { n: 'Fire rate', b: 1500, a: 1500 }] },
+                    { label: 'Rapid Fire',      path: 'speed',  tier: 'Lv 1 / $120', desc: 'Mechanical loader cuts reload time significantly.', stats: [{ n: 'Damage', b: 40, a: 40 }, { n: 'Range', b: 220, a: 220 }, { n: 'Fire rate', b: 1500, a: 1100, u: '-400ms' }] },
+                    { label: 'Rapid Fire II',   path: 'speed',  tier: 'Lv 2 / $280', desc: 'Double-barrel launch for sustained rock coverage.', stats: [{ n: 'Damage', b: 40, a: 40 }, { n: 'Range', b: 220, a: 220 }, { n: 'Fire rate', b: 1100, a: 700, u: '-400ms' }] },
+                    { label: 'Trebuchet',       path: 'range',  tier: 'Lv 1 / $80',  desc: 'Extended arm arc launches rocks much further.', stats: [{ n: 'Damage', b: 40, a: 40 }, { n: 'Range', b: 220, a: 300, u: '+80' }, { n: 'Fire rate', b: 1500, a: 1500 }] },
+                    { label: 'Trebuchet II',    path: 'range',  tier: 'Lv 2 / $200', desc: 'Siege-class range — rocks reach almost anywhere on the map.', stats: [{ n: 'Damage', b: 40, a: 40 }, { n: 'Range', b: 300, a: 380, u: '+80' }, { n: 'Fire rate', b: 1500, a: 1500 }] },
+                    { label: 'Titan (Master)',  path: 'master', tier: '$600',         desc: 'Awakens the stone giant. Damage per hit becomes devastating.', stats: [{ n: 'Damage', b: 80, a: 280, u: '×3.5' }, { n: 'Range', b: 380, a: 580, u: '+200' }, { n: 'Fire rate', b: 700, a: 490, u: '×0.7' }] },
+                ]
+            },
+            darktower: {
+                label: 'Dark Tower', cost: 160,
+                upgrades: [
+                    { label: 'Shadow Bolt',        path: 'damage', tier: 'Lv 1 / $85',  desc: 'Bolts charged with void energy deal increased damage.', stats: [{ n: 'Damage', b: 25, a: 35, u: '+10' }, { n: 'Range', b: 300, a: 300 }, { n: 'Fire rate', b: 600, a: 600 }] },
+                    { label: 'Shadow Bolt II',     path: 'damage', tier: 'Lv 2 / $230', desc: 'Pure darkness shreds through enemy defenses.', stats: [{ n: 'Damage', b: 35, a: 45, u: '+10' }, { n: 'Range', b: 300, a: 300 }, { n: 'Fire rate', b: 600, a: 600 }] },
+                    { label: 'Dark Pulse',         path: 'speed',  tier: 'Lv 1 / $95',  desc: 'Void pulses discharge faster between shots.', stats: [{ n: 'Damage', b: 25, a: 25 }, { n: 'Range', b: 300, a: 300 }, { n: 'Fire rate', b: 600, a: 520, u: '-80ms' }] },
+                    { label: 'Dark Pulse II',      path: 'speed',  tier: 'Lv 2 / $240', desc: 'Rapid shadow discharge overwhelms enemy health pools.', stats: [{ n: 'Damage', b: 25, a: 25 }, { n: 'Range', b: 300, a: 300 }, { n: 'Fire rate', b: 520, a: 440, u: '-80ms' }] },
+                    { label: 'Void Reach',         path: 'range',  tier: 'Lv 1 / $75',  desc: 'Tendrils of darkness extend the targeting field.', stats: [{ n: 'Damage', b: 25, a: 25 }, { n: 'Range', b: 300, a: 400, u: '+100' }, { n: 'Fire rate', b: 600, a: 600 }] },
+                    { label: 'Void Reach II',      path: 'range',  tier: 'Lv 2 / $190', desc: 'Void field covers a massive area around the tower.', stats: [{ n: 'Damage', b: 25, a: 25 }, { n: 'Range', b: 400, a: 500, u: '+100' }, { n: 'Fire rate', b: 600, a: 600 }] },
+                    { label: 'Void Lord (Master)', path: 'master', tier: '$500',         desc: 'Ascends to Void Lord form. Projectiles pierce through all enemies.', stats: [{ n: 'Damage', b: 45, a: 126, u: '×2.8' }, { n: 'Range', b: 500, a: 750, u: '+250' }, { n: 'Fire rate', b: 440, a: 220, u: '×0.5' }] },
+                ]
+            },
+            lighttower: {
+                label: 'Light Tower', cost: 170,
+                upgrades: [
+                    { label: 'Radiant Beam',     path: 'damage', tier: 'Lv 1 / $90',  desc: 'Focused light beams burn through enemy armor.', stats: [{ n: 'Damage', b: 18, a: 27, u: '+9' }, { n: 'Range', b: 400, a: 400 }, { n: 'Fire rate', b: 350, a: 350 }] },
+                    { label: 'Radiant Beam II',  path: 'damage', tier: 'Lv 2 / $250', desc: 'Concentrated solar energy vaporizes weaker enemies instantly.', stats: [{ n: 'Damage', b: 27, a: 36, u: '+9' }, { n: 'Range', b: 400, a: 400 }, { n: 'Fire rate', b: 350, a: 350 }] },
+                    { label: 'Burst',            path: 'speed',  tier: 'Lv 1 / $100', desc: 'Capacitors charge faster for a quicker firing cycle.', stats: [{ n: 'Damage', b: 18, a: 18 }, { n: 'Range', b: 400, a: 400 }, { n: 'Fire rate', b: 350, a: 280, u: '-70ms' }] },
+                    { label: 'Burst II',         path: 'speed',  tier: 'Lv 2 / $260', desc: 'Light pulses in rapid succession, barely pausing between shots.', stats: [{ n: 'Damage', b: 18, a: 18 }, { n: 'Range', b: 400, a: 400 }, { n: 'Fire rate', b: 280, a: 210, u: '-70ms' }] },
+                    { label: 'Brilliance',       path: 'range',  tier: 'Lv 1 / $80',  desc: 'Beam cohesion improvements let light travel further.', stats: [{ n: 'Damage', b: 18, a: 18 }, { n: 'Range', b: 400, a: 520, u: '+120' }, { n: 'Fire rate', b: 350, a: 350 }] },
+                    { label: 'Brilliance II',    path: 'range',  tier: 'Lv 2 / $210', desc: 'Full-spectrum reach — covers nearly the entire lane.', stats: [{ n: 'Damage', b: 18, a: 18 }, { n: 'Range', b: 520, a: 640, u: '+120' }, { n: 'Fire rate', b: 350, a: 350 }] },
+                    { label: 'Seraph (Master)',  path: 'master', tier: '$520',         desc: 'Divine light form. Blinds and damages all enemies in range simultaneously.', stats: [{ n: 'Damage', b: 36, a: 90, u: '×2.5' }, { n: 'Range', b: 640, a: 940, u: '+300' }, { n: 'Fire rate', b: 210, a: 94, u: '×0.45' }] },
+                ]
+            },
+            psychictower: {
+                label: 'Psychic Tower', cost: 175,
+                upgrades: [
+                    { label: 'Mind Crush',        path: 'damage', tier: 'Lv 1 / $88',  desc: 'Psychic force amplified to crush enemy vitals.', stats: [{ n: 'Damage', b: 22, a: 33, u: '+11' }, { n: 'Range', b: 280, a: 280 }, { n: 'Fire rate', b: 500, a: 500 }] },
+                    { label: 'Mind Crush II',     path: 'damage', tier: 'Lv 2 / $240', desc: 'Mental devastation — enemies take full psychic impact.', stats: [{ n: 'Damage', b: 33, a: 44, u: '+11' }, { n: 'Range', b: 280, a: 280 }, { n: 'Fire rate', b: 500, a: 500 }] },
+                    { label: 'Psyche Wave',       path: 'speed',  tier: 'Lv 1 / $98',  desc: 'Mental cycles accelerate for faster psi-pulse discharge.', stats: [{ n: 'Damage', b: 22, a: 22 }, { n: 'Range', b: 280, a: 280 }, { n: 'Fire rate', b: 500, a: 410, u: '-90ms' }] },
+                    { label: 'Psyche Wave II',    path: 'speed',  tier: 'Lv 2 / $250', desc: 'Psionic feedback loop fires at near-continuous rate.', stats: [{ n: 'Damage', b: 22, a: 22 }, { n: 'Range', b: 280, a: 280 }, { n: 'Fire rate', b: 410, a: 320, u: '-90ms' }] },
+                    { label: 'Mental Link',       path: 'range',  tier: 'Lv 1 / $82',  desc: 'Psychic field extends to detect enemies further away.', stats: [{ n: 'Damage', b: 22, a: 22 }, { n: 'Range', b: 280, a: 390, u: '+110' }, { n: 'Fire rate', b: 500, a: 500 }] },
+                    { label: 'Mental Link II',    path: 'range',  tier: 'Lv 2 / $215', desc: 'Full telepathic reach across the battlefield.', stats: [{ n: 'Damage', b: 22, a: 22 }, { n: 'Range', b: 390, a: 500, u: '+110' }, { n: 'Fire rate', b: 500, a: 500 }] },
+                    { label: 'Overmind (Master)', path: 'master', tier: '$480',         desc: 'Becomes the Overmind. Simultaneously targets and slows multiple enemies.', stats: [{ n: 'Damage', b: 44, a: 114, u: '×2.6' }, { n: 'Range', b: 500, a: 720, u: '+220' }, { n: 'Fire rate', b: 320, a: 160, u: '×0.5' }] },
+                ]
+            },
+            windtower: {
+                label: 'Wind Tower', cost: 155,
+                upgrades: [
+                    { label: 'Gust Strike',         path: 'damage', tier: 'Lv 1 / $82',  desc: 'Compressed air blasts deal higher impact damage.', stats: [{ n: 'Damage', b: 16, a: 24, u: '+8' }, { n: 'Range', b: 350, a: 350 }, { n: 'Fire rate', b: 450, a: 450 }] },
+                    { label: 'Gust Strike II',      path: 'damage', tier: 'Lv 2 / $220', desc: 'Razor-wind shreds through enemy formations.', stats: [{ n: 'Damage', b: 24, a: 32, u: '+8' }, { n: 'Range', b: 350, a: 350 }, { n: 'Fire rate', b: 450, a: 450 }] },
+                    { label: 'Tempest',             path: 'speed',  tier: 'Lv 1 / $92',  desc: 'Storm cycling increases burst fire frequency.', stats: [{ n: 'Damage', b: 16, a: 16 }, { n: 'Range', b: 350, a: 350 }, { n: 'Fire rate', b: 450, a: 375, u: '-75ms' }] },
+                    { label: 'Tempest II',          path: 'speed',  tier: 'Lv 2 / $245', desc: 'Full tempest mode — gales fire in rapid succession.', stats: [{ n: 'Damage', b: 16, a: 16 }, { n: 'Range', b: 350, a: 350 }, { n: 'Fire rate', b: 375, a: 300, u: '-75ms' }] },
+                    { label: 'Whirlwind',           path: 'range',  tier: 'Lv 1 / $78',  desc: 'Vortex extension reaches enemies across wider lanes.', stats: [{ n: 'Damage', b: 16, a: 16 }, { n: 'Range', b: 350, a: 480, u: '+130' }, { n: 'Fire rate', b: 450, a: 450 }] },
+                    { label: 'Whirlwind II',        path: 'range',  tier: 'Lv 2 / $205', desc: 'Atmospheric reach — wind detects targets at extreme range.', stats: [{ n: 'Damage', b: 16, a: 16 }, { n: 'Range', b: 480, a: 610, u: '+130' }, { n: 'Fire rate', b: 450, a: 450 }] },
+                    { label: 'Tempest God (Master)',path: 'master', tier: '$460',         desc: 'Storms across the entire map. Knockback added to every shot.', stats: [{ n: 'Damage', b: 32, a: 70, u: '×2.2' }, { n: 'Range', b: 610, a: 890, u: '+280' }, { n: 'Fire rate', b: 300, a: 120, u: '×0.4' }] },
+                ]
+            }
+        };
 
-firetower: {
-    label: 'Fire Tower', cost: 150,
-    upgrades: [
-        { label: 'Inferno II', path: 'damage', tier: 'Lv 2 / $220', desc: 'Burn scaling.', stats: [
-            { n: 'Damage', b: 20, a: 34 },
-            { n: 'Range', b: 250, a: 250 },
-            { n: 'Fire rate', b: 400, a: 400 }
-        ]},
-        { label: 'Rapid Burn II', path: 'speed', tier: 'Lv 2 / $200', desc: 'Faster burn cycles.', stats: [
-            { n: 'Damage', b: 20, a: 20 },
-            { n: 'Range', b: 250, a: 250 },
-            { n: 'Fire rate', b: 340, a: 260, u: '-80ms' }
-        ]},
-        { label: 'Spread II', path: 'range', tier: 'Lv 2 / $180', desc: 'Wider flame reach.', stats: [
-            { n: 'Damage', b: 20, a: 20 },
-            { n: 'Range', b: 290, a: 350, u: '+60' },
-            { n: 'Fire rate', b: 400, a: 400 }
-        ]},
-        { label: 'Infernal (Master)', path: 'master', tier: '$1950', desc: 'Burning hellform.', stats: [
-            { n: 'Damage', b: 34, a: 70, u: '×1.6' },
-            { n: 'Range', b: 350, a: 420, u: '+70' },
-            { n: 'Fire rate', b: 260, a: 200, u: '×0.77' }
-        ]}
-    ]
-},
-
-icetower: {
-    label: 'Ice Tower', cost: 120,
-    upgrades: [
-        { label: 'Frostbite II', path: 'damage', tier: 'Lv 2 / $160', stats: [
-            { n: 'Damage', b: 10, a: 16 },
-            { n: 'Range', b: 150, a: 150 },
-            { n: 'Fire rate', b: 800, a: 800 }
-        ]},
-        { label: 'Blizzard II', path: 'speed', tier: 'Lv 2 / $200', stats: [
-            { n: 'Damage', b: 10, a: 10 },
-            { n: 'Range', b: 150, a: 150 },
-            { n: 'Fire rate', b: 650, a: 520, u: '-130ms' }
-        ]},
-        { label: 'Arctic Reach II', path: 'range', tier: 'Lv 2 / $175', stats: [
-            { n: 'Damage', b: 10, a: 10 },
-            { n: 'Range', b: 180, a: 230, u: '+50' },
-            { n: 'Fire rate', b: 800, a: 800 }
-        ]},
-        { label: 'Absolute Zero (Master)', path: 'master', tier: '$1450', stats: [
-            { n: 'Damage', b: 16, a: 28, u: '×1.4' },
-            { n: 'Range', b: 230, a: 340, u: '+110' },
-            { n: 'Fire rate', b: 520, a: 380, u: '×0.73' }
-        ]}
-    ]
-},
-
-rocktower: {
-    label: 'Rock Tower', cost: 200,
-    upgrades: [
-        { label: 'Boulder II', path: 'damage', tier: 'Lv 2 / $300', stats: [
-            { n: 'Damage', b: 40, a: 65 },
-            { n: 'Range', b: 220, a: 220 },
-            { n: 'Fire rate', b: 1500, a: 1500 }
-        ]},
-        { label: 'Rapid Fire II', path: 'speed', tier: 'Lv 2 / $280', stats: [
-            { n: 'Damage', b: 40, a: 40 },
-            { n: 'Range', b: 220, a: 220 },
-            { n: 'Fire rate', b: 1200, a: 950, u: '-250ms' }
-        ]},
-        { label: 'Trebuchet II', path: 'range', tier: 'Lv 2 / $200', stats: [
-            { n: 'Damage', b: 40, a: 40 },
-            { n: 'Range', b: 280, a: 350, u: '+70' },
-            { n: 'Fire rate', b: 1500, a: 1500 }
-        ]},
-        { label: 'Titan (Master)', path: 'master', tier: '$1850', stats: [
-            { n: 'Damage', b: 65, a: 120, u: '×1.5' },
-            { n: 'Range', b: 350, a: 500, u: '+150' },
-            { n: 'Fire rate', b: 950, a: 750, u: '×0.78' }
-        ]}
-    ]
-},
-
-darktower: {
-    label: 'Dark Tower', cost: 160,
-    upgrades: [
-        { label: 'Shadow Bolt II', path: 'damage', tier: 'Lv 2 / $230', stats: [
-            { n: 'Damage', b: 25, a: 38 },
-            { n: 'Range', b: 300, a: 300 },
-            { n: 'Fire rate', b: 600, a: 600 }
-        ]},
-        { label: 'Dark Pulse II', path: 'speed', tier: 'Lv 2 / $240', stats: [
-            { n: 'Damage', b: 25, a: 25 },
-            { n: 'Range', b: 300, a: 300 },
-            { n: 'Fire rate', b: 540, a: 460, u: '-80ms' }
-        ]},
-        { label: 'Void Reach II', path: 'range', tier: 'Lv 2 / $190', stats: [
-            { n: 'Damage', b: 25, a: 25 },
-            { n: 'Range', b: 380, a: 460, u: '+80' },
-            { n: 'Fire rate', b: 600, a: 600 }
-        ]},
-        { label: 'Void Lord (Master)', path: 'master', tier: '$1800', stats: [
-            { n: 'Damage', b: 38, a: 85, u: '×1.7' },
-            { n: 'Range', b: 460, a: 620, u: '+160' },
-            { n: 'Fire rate', b: 460, a: 340, u: '×0.74' }
-        ]}
-    ]
-},
-
-lighttower: {
-    label: 'Light Tower', cost: 170,
-    upgrades: [
-        { label: 'Radiant Beam II', path: 'damage', tier: 'Lv 2 / $250', stats: [
-            { n: 'Damage', b: 18, a: 28 },
-            { n: 'Range', b: 400, a: 400 },
-            { n: 'Fire rate', b: 350, a: 350 }
-        ]},
-        { label: 'Burst II', path: 'speed', tier: 'Lv 2 / $260', stats: [
-            { n: 'Damage', b: 18, a: 18 },
-            { n: 'Range', b: 400, a: 400 },
-            { n: 'Fire rate', b: 300, a: 240, u: '-60ms' }
-        ]},
-        { label: 'Brilliance II', path: 'range', tier: 'Lv 2 / $210', stats: [
-            { n: 'Damage', b: 18, a: 18 },
-            { n: 'Range', b: 480, a: 560, u: '+80' },
-            { n: 'Fire rate', b: 350, a: 350 }
-        ]},
-        { label: 'Seraph (Master)', path: 'master', tier: '$1700', stats: [
-            { n: 'Damage', b: 28, a: 60, u: '×1.4' },
-            { n: 'Range', b: 560, a: 800, u: '+240' },
-            { n: 'Fire rate', b: 250, a: 190, u: '×0.76' }
-        ]}
-    ]
-},
-
-psychictower: {
-    label: 'Psychic Tower', cost: 175,
-    upgrades: [
-        { label: 'Mind Crush II', path: 'damage', tier: 'Lv 2 / $240', stats: [
-            { n: 'Damage', b: 22, a: 34 },
-            { n: 'Range', b: 280, a: 280 },
-            { n: 'Fire rate', b: 500, a: 500 }
-        ]},
-        { label: 'Psyche Wave II', path: 'speed', tier: 'Lv 2 / $250', stats: [
-            { n: 'Damage', b: 22, a: 22 },
-            { n: 'Range', b: 280, a: 280 },
-            { n: 'Fire rate', b: 440, a: 360, u: '-80ms' }
-        ]},
-        { label: 'Mental Link II', path: 'range', tier: 'Lv 2 / $215', stats: [
-            { n: 'Damage', b: 22, a: 22 },
-            { n: 'Range', b: 350, a: 420, u: '+70' },
-            { n: 'Fire rate', b: 500, a: 500 }
-        ]},
-        { label: 'Overmind (Master)', path: 'master', tier: '$1400', stats: [
-            { n: 'Damage', b: 34, a: 75, u: '×1.6' },
-            { n: 'Range', b: 420, a: 600, u: '+180' },
-            { n: 'Fire rate', b: 380, a: 280, u: '×0.73' }
-        ]}
-    ]
-},
-
-windtower: {
-    label: 'Wind Tower', cost: 155,
-    upgrades: [
-        { label: 'Gust Strike II', path: 'damage', tier: 'Lv 2 / $220', stats: [
-            { n: 'Damage', b: 16, a: 26 },
-            { n: 'Range', b: 350, a: 350 },
-            { n: 'Fire rate', b: 450, a: 450 }
-        ]},
-        { label: 'Tempest II', path: 'speed', tier: 'Lv 2 / $245', stats: [
-            { n: 'Damage', b: 16, a: 16 },
-            { n: 'Range', b: 350, a: 350 },
-            { n: 'Fire rate', b: 390, a: 320, u: '-70ms' }
-        ]},
-        { label: 'Whirlwind II', path: 'range', tier: 'Lv 2 / $205', stats: [
-            { n: 'Damage', b: 16, a: 16 },
-            { n: 'Range', b: 420, a: 500, u: '+80' },
-            { n: 'Fire rate', b: 450, a: 450 }
-        ]},
-        { label: 'Tempest God (Master)', path: 'master', tier: '$1500', stats: [
-            { n: 'Damage', b: 26, a: 55, u: '×1.3' },
-            { n: 'Range', b: 500, a: 700, u: '+200' },
-            { n: 'Fire rate', b: 330, a: 260, u: '×0.78' }
-        ]}
-    ]
-}
-
-};
         const UW       = W;
         const UH       = H;
         const listX    = UW * 0.14;
